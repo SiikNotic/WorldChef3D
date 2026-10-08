@@ -11,7 +11,7 @@ const RECIPES={
 };
 const STATIONS=[["grill","🔥","Parrilla",1,350],["fryer","🍟","Freidora",2,600],["oven","🍕","Horno",3,1000],["prep","🔪","Preparación",5,1800],["drinks","🥤","Bebidas",2,750],["fridge","🧊","Nevera",1,900],["dish","🧼","Lavaplatos",2,1100]];
 const INITIAL_INV={bread:20,meat:20,cheese:20,lettuce:20,tomato:20,potato:30,dough:10,pepperoni:10,rice:20,fish:10,seaweed:10,syrup:20};
-function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,selectedStationRecipe:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{},expansion:0,city:"newyork",activeEvent:null}}
+function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,selectedStationRecipe:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{},expansion:0,city:"newyork",activeEvent:null,activeStation:null}}
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null"),d=fresh();if(!x)return d;Object.assign(d,x,{employees:{...d.employees,...(x.employees||{})},recipeLevels:{...d.recipeLevels,...(x.recipeLevels||{})},stations:{...d.stations,...(x.stations||{})},inv:{...d.inv,...(x.inv||{})}});d.orders=Array.isArray(x.orders)?x.orders:[];d.prepared=Array.isArray(x.prepared)?x.prepared:[];return d}catch{return fresh()}}
 let S=load(), cooking=false;
 // --- LIVE EVENTS ---
@@ -40,11 +40,19 @@ const renderer=new THREE.WebGLRenderer({canvas:$("game"),antialias:true});render
 
 // --- 3D TOUCH INTERACTION ---
 const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+function stationCapacity(id){
+ const lv=stationLevel(id);
+ if(!lv)return 0;
+ return 1+Math.floor(lv/3)+(id==="prep"?1:0);
+}
+function stationBusy(id){
+ return S.activeStation===id;
+}
 function selectStation3D(id){
  const lv=stationLevel(id), info=STATIONS.find(x=>x[0]===id);
  if(!info)return;
  $("stationName").textContent=info[2];
- $("stationInfo").textContent=lv?"Nivel "+lv:"Bloqueada";
+ $("stationInfo").textContent=lv?"Nivel "+lv+" · Capacidad "+stationCapacity(id)+(stationBusy(id)?" · 🔥 EN USO":""):"Bloqueada";
  toast(lv?"🔧 "+info[1]+" "+info[2]+" seleccionada":"🔒 Requiere nivel "+info[3]);
  const recipe=Object.entries(RECIPES).find(([rid,r])=>r.station===id&&unlocked(rid));
  if(recipe){S.selectedStationRecipe=recipe[0];update()}
@@ -161,7 +169,7 @@ function animateStaff(now){
 function update(){const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0],id=(S.selectedStationRecipe&&unlocked(S.selectedStationRecipe)?S.selectedStationRecipe:(o?.recipe||Object.keys(RECIPES).find(unlocked)||"burger")),r=RECIPES[id],lv=stationLevel(r.station);$("level").textContent=S.level;$("cash").textContent="$"+S.cash.toLocaleString();$("gems").textContent=S.gems;$("rep").textContent=S.reputation+"%";$("xpBar").style.width=Math.min(100,S.xp/S.xpGoal*100)+"%";$("xpText").textContent=S.xp+" / "+S.xpGoal+" XP";$("stationName").textContent=STATIONS.find(x=>x[0]===r.station)?.[2]||"Parrilla";$("stationInfo").textContent="Nivel "+lv+" · "+r.time+"s";$("cookBtn").innerHTML="COCINAR "+r.icon+" "+r.name.toUpperCase()+" <span>"+r.time+"s</span>";$("ingredients").innerHTML=Object.entries(r.req).map(([k,v])=>'<div class="ingredient">'+k+'<small>'+v+" · "+(S.inv[k]||0)+" disponibles</small></div>").join("");$("restaurantLevel").textContent=S.restaurantLevel;$("preparedCount")&&($("preparedCount").textContent=S.prepared.length)}
 function gainXP(n){S.xp+=n;while(S.xp>=S.xpGoal){S.xp-=S.xpGoal;S.level++;S.xpGoal=Math.floor(S.xpGoal*1.5);toast("⭐ Nivel "+S.level+" desbloqueado")}checkRestaurant()}
 function checkRestaurant(){const next=S.restaurantLevel+1;if(next>20)return;const orderNeed=next===2?10:next===3?35:next===4?75:next===5?150:150+(next-5)*75;const cashNeed=next===2?1000:next===3?1500:next===4?4000:next===5?8000:8000+(next-5)*5000;const repNeed=next===2?85:next===3?90:next===4?95:90;const stationNeed=next>=3?2:1;const recipeNeed=next>=5?3:next>=4?2:0;const recipeLevelNeed=next>=5?3:next>=4?2:1;const mastered=Object.values(S.recipeLevels||{}).filter(l=>l>=recipeLevelNeed).length;if(S.totalOrders>=orderNeed&&S.cash>=cashNeed&&S.reputation>=repNeed&&(S.stations.grill||0)>=stationNeed&&mastered>=recipeNeed){S.cash-=cashNeed;S.restaurantLevel=next;toast("🏪 Restaurante nivel "+next+" desbloqueado");save()}}
-function cook(){if(cooking)return;const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0],items=o?.items||[o?.recipe||"burger"],counts={};items.forEach(x=>counts[x]=(counts[x]||0)+1);const id=Object.keys(counts).find(x=>S.prepared.filter(p=>p.recipe===x).length<counts[x])||items[0],r=RECIPES[id];if(S.selectedStationRecipe&&r.station!==S.selectedStationRecipe){toast("👉 Selecciona la estación correcta para "+r.name);return}if(!unlocked(id)){toast("🔒 Estación bloqueada");return}if(!ok(id)){toast("⚠️ Faltan ingredientes para "+r.name);return}consume(id);cooking=true;$("cookBtn").disabled=true;const cookLevel=S.employees?.cook?.level||0;const staffSpeed=Math.max(.55,1-cookLevel*.08);const duration=Math.max(2,(r.time-(stationLevel(r.station)-1)*.8)*staffSpeed),start=performance.now();function tick(now){const left=duration-(now-start)/1000;if(left<=0)return finish(id);$("cookBtn").innerHTML="🔥 COCINANDO "+Math.ceil(left)+"s";requestAnimationFrame(tick)}requestAnimationFrame(tick);update()}
+function cook(){if(cooking)return;const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0],items=o?.items||[o?.recipe||"burger"],counts={};items.forEach(x=>counts[x]=(counts[x]||0)+1);const id=Object.keys(counts).find(x=>S.prepared.filter(p=>p.recipe===x).length<counts[x])||items[0],r=RECIPES[id];if(S.selectedStationRecipe&&r.station!==S.selectedStationRecipe){toast("👉 Selecciona la estación correcta para "+r.name);return}if(!unlocked(id)){toast("🔒 Estación bloqueada");return}if(!ok(id)){toast("⚠️ Faltan ingredientes para "+r.name);return}consume(id);S.activeStation=r.station;cooking=true;$("cookBtn").disabled=true;const cookLevel=S.employees?.cook?.level||0;const staffSpeed=Math.max(.55,1-cookLevel*.08);const duration=Math.max(2,(r.time-(stationLevel(r.station)-1)*.8)*staffSpeed),start=performance.now();function tick(now){const left=duration-(now-start)/1000;if(left<=0)return finish(id);$("cookBtn").innerHTML="🔥 COCINANDO "+Math.ceil(left)+"s";requestAnimationFrame(tick)}requestAnimationFrame(tick);update()}
 function finish(id){cooking=false;$("cookBtn").disabled=false;S.prepared.push({recipe:id,created:Date.now()});if(S.activeContract){if(S.activeContract.requirements){if(Object.prototype.hasOwnProperty.call(S.activeContract.requirements,id))S.activeContract.done[id]=Math.min(S.activeContract.requirements[id],(S.activeContract.done[id]||0)+1);}else S.activeContract.done=Math.min(S.activeContract.need,S.activeContract.done+1);}const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0],r=RECIPES[id];if(o){const items=o.items||[o.recipe],ready=items.every(x=>S.prepared.some(p=>p.recipe===x));if(ready)serve(o);else toast("🍽️ "+r.name+" preparada. Falta completar esta orden.");}else toast("🍽️ "+r.name+" preparada.");update()}
 function serve(o){
  const items=o.items||[o.recipe];
