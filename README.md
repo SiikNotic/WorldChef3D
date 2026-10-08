@@ -6,7 +6,7 @@ WorldChef3D is a mobile-first 3D restaurant management game designed to run dire
 
 - 3D restaurant scene with animated customer characters.
 - Timed orders, VIP customers, special customers, 2-item and advanced 3-item combos.
-- Touch-selectable 3D cooking stations with active state, capacity, ingredient inventory, recipe upgrades and equipment upgrades.
+- Touch-selectable 3D cooking stations with active state, capacity, ingredient inventory, recipe upgrades, equipment upgrades and warehouse storage.
 - Player XP/levels plus separate restaurant progression.
 - Restaurant progression requires orders, cash, reputation, station upgrades and recipe mastery.
 - Visible 3D employees: cooks, waiters and cleaners with real gameplay effects and refresh on hire/upgrade.
