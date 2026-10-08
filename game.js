@@ -103,5 +103,57 @@ function upgradeEmployee(role){
 }
 function contractTick(dt){const a=S.activeContract;if(!a)return;a.left-=dt;if(a.left<=0){if(a.done>=a.need){S.cash+=a.reward;S.completedContracts++;gainXP(Math.round(a.reward/80));toast("🏆 Contrato completado +$"+a.reward)}else{S.reputation=Math.max(0,S.reputation-10);toast("❌ Contrato fallido · reputación -10")}S.activeContract=null}}
 function loop(now){if(!loop.last)loop.last=now;const dt=(now-loop.last)/1000;loop.last=now;S.orders.forEach(o=>o.left-=dt);const expired=S.orders.filter(o=>o.left<=0);if(expired.length){S.reputation=Math.max(0,S.reputation-expired.length*3);S.orders=S.orders.filter(o=>o.left>0);if(!S.selectedOrder||!S.orders.some(o=>o.id===S.selectedOrder))S.selectedOrder=S.orders[0]?.id||null;expired.forEach((_,i)=>setTimeout(addOrder,700+i*300));toast("😠 Cliente se fue · reputación -"+expired.length*3)}contractTick(dt);renderOrders();update();renderer.render(scene,camera);customerMeshes.forEach(g=>{g.position.y=g.userData.baseY+Math.sin(now*.002+g.userData.phase)*.025});requestAnimationFrame(loop)}
+
+
+// --- POLISH SYSTEMS: tutorial, achievements, audio, offline reward ---
+const WC={
+  audio:null,
+  beep(freq=520,duration=.07,type="sine"){
+    try{
+      if(!this.audio)this.audio=new (window.AudioContext||window.webkitAudioContext)();
+      const o=this.audio.createOscillator(),g=this.audio.createGain();
+      o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(.045,this.audio.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001,this.audio.currentTime+duration);
+      o.connect(g);g.connect(this.audio.destination);o.start();o.stop(this.audio.currentTime+duration);
+    }catch{}
+  },
+  achievements:{
+    first_order:["🍽️ Primera orden",s=>s.totalOrders>=1],
+    ten_orders:["🔥 En racha",s=>s.totalOrders>=10],
+    vip:["💎 Cliente VIP",s=>s.totalOrders>=1],
+    rich:["💰 Primeros $5,000",s=>s.cash>=5000],
+    contract:["📋 Contratista",s=>s.completedContracts>=1],
+    world:["🌎 Viajero",s=>s.level>=11]
+  }
+};
+S.achievements=S.achievements||{};
+function checkAchievements(){
+  for(const [id,[name,test]] of Object.entries(WC.achievements)){
+    if(!S.achievements[id]&&test(S)){S.achievements[id]=Date.now();toast("🏆 "+name);WC.beep(880,.12,"triangle")}
+  }
+}
+const _gainXP=gainXP;
+gainXP=function(n){_gainXP(n);checkAchievements();};
+const _serve=serve;
+serve=function(o){_serve(o);WC.beep(o.vip?880:660,.09,"triangle");checkAchievements();};
+
+function showTutorial(){
+  if(S.tutorialDone)return;
+  const steps=[
+    ["👋 Bienvenido a WorldChef3D","Selecciona una orden de cliente arriba."],
+    ["🔥 Cocina","Pulsa COCINAR para preparar el plato seleccionado."],
+    ["🍽️ Sirve","Cuando esté listo, pulsa SERVIR ORDEN SELECCIONADA."],
+    ["📦 Administra","Compra ingredientes y mejora estaciones desde los botones."],
+    ["📋 Crece","Completa contratos y sube el nivel de tu restaurante."]
+  ];
+  let n=0;
+  const el=document.createElement("div");el.id="tutorial";
+  const render=()=>{const [a,b]=steps[n];el.innerHTML="<div class='tutorial-card'><div class='tutorial-step'>"+(n+1)+" / "+steps.length+"</div><h2>"+a+"</h2><p>"+b+"</p><button id='tutorialNext'>"+(n===steps.length-1?"EMPEZAR":"SIGUIENTE")+"</button></div>";el.querySelector("button").onclick=()=>{WC.beep(620);if(n===steps.length-1){S.tutorialDone=true;save();el.remove()}else{n++;render()}}};
+  document.body.appendChild(el);render();
+}
+window.addEventListener("pagehide",()=>{S.lastSeen=Date.now();save()});
+document.addEventListener("pointerdown",()=>WC.beep(420,.025),{once:true});
+setTimeout(showTutorial,500);
+
 addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 if(!S.orders.length){addOrder();setTimeout(addOrder,2500);setTimeout(addOrder,5000)}else{S.selectedOrder=S.orders.some(o=>o.id===S.selectedOrder)?S.selectedOrder:S.orders[0].id;renderOrders();syncCustomers()}update();requestAnimationFrame(loop);
