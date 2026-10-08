@@ -287,10 +287,10 @@ const WC={
   achievements:{
     first_order:["🍽️ Primera orden",s=>s.totalOrders>=1],
     ten_orders:["🔥 En racha",s=>s.totalOrders>=10],
-    vip:["💎 Cliente VIP",s=>s.totalOrders>=1],
-    rich:["💰 Primeros $5,000",s=>s.cash>=5000],
+    vip:["💎 Cliente VIP",s=>(s.vipServed||0)>=1],
+    rich:["💰 Primeros $5,000",s=>(s.totalEarnings||0)>=5000],
     contract:["📋 Contratista",s=>s.completedContracts>=1],
-    world:["🌎 Viajero",s=>s.level>=11]
+    world:["🌎 Viajero",s=>s.city&&s.city!=="newyork"]
   }
 };
 S.achievements=S.achievements||{};
