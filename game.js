@@ -63,14 +63,14 @@ function addOrder(){
  const combo=S.restaurantLevel>=4&&Math.random()<.28;
  const second=combo?(pool.filter(x=>x!==first)[Math.floor(Math.random()*Math.max(1,pool.filter(x=>x!==first).length))]||first):null;
  const items=second?[first,second]:[first];
- const vip=Math.random()<Math.min(.18,.07+S.marketing*.015), base=Math.max(...items.map(x=>RECIPES[x].time));
+ const vip=Math.random()<Math.min(.18,.07+S.marketing*.015), specialRoll=Math.random(), special=specialRoll<.02?"celebrity":specialRoll<.03?"royal":(specialRoll<.06&&S.reputation>=90?"critic":null), base=Math.max(...items.map(x=>RECIPES[x].time));
  const waiterLevel=S.employees?.waiter?.level||0; const t=((vip?58:68)+Math.random()*14)*(1+waiterLevel*.08);
- const reward=Math.round(items.reduce((n,x)=>n+recipeValue(x),0)*(vip?2:1));
- S.orders.push({id:crypto.randomUUID(),recipe:first,items,vip,time:t,left:t,reward});
+ const specialMultiplier=special==="royal"?3:special==="celebrity"?2.5:special==="critic"?1.5:1;const reward=Math.round(items.reduce((n,x)=>n+recipeValue(x),0)*(vip?2:1)*specialMultiplier);
+ S.orders.push({id:crypto.randomUUID(),recipe:first,items,vip,special,time:t,left:t,reward});
  if(!S.selectedOrder)S.selectedOrder=S.orders[0].id;
  renderOrders()
 }
-function renderOrders(){$("orders").innerHTML=S.orders.map(o=>{const r=RECIPES[o.recipe],items=o.items||[o.recipe],p=Math.max(0,o.left/o.time);return '<button class="order '+(o.vip?"vip ":"")+(o.id===S.selectedOrder?"selected":"")+'" data-order="'+o.id+'"><div class="order-head"><span>'+(o.vip?"💎 VIP":"🧑 Cliente")+'</span><span>'+r.icon+" "+r.name+'</span></div><div class="order-items">'+items.map(x=>RECIPES[x].icon+" "+RECIPES[x].name).join(" + ")+'</div><div class="timer"><span style="transform:scaleX('+p+')"></span></div><div class="order-reward"><span>'+(o.vip?"2× ":"")+"🪙 $"+o.reward+'</span><span>'+Math.ceil(o.left)+"s</span></div></button>"}).join("");$("orders").querySelectorAll("[data-order]").forEach(b=>b.onclick=()=>{S.selectedOrder=b.dataset.order;renderOrders();update()})}
+function renderOrders(){$("orders").innerHTML=S.orders.map(o=>{const r=RECIPES[o.recipe],items=o.items||[o.recipe],p=Math.max(0,o.left/o.time);return '<button class="order '+(o.vip?"vip ":"")+(o.id===S.selectedOrder?"selected":"")+'" data-order="'+o.id+'"><div class="order-head"><span>'+(o.special==="celebrity"?"🌟 Celebridad":o.special==="royal"?"👑 Realeza":o.special==="critic"?"🧐 Crítico":o.vip?"💎 VIP":"🧑 Cliente")+'</span><span>'+r.icon+" "+r.name+'</span></div><div class="order-items">'+items.map(x=>RECIPES[x].icon+" "+RECIPES[x].name).join(" + ")+'</div><div class="timer"><span style="transform:scaleX('+p+')"></span></div><div class="order-reward"><span>'+(o.vip?"2× ":"")+"🪙 $"+o.reward+'</span><span>'+Math.ceil(o.left)+"s</span></div></button>"}).join("");$("orders").querySelectorAll("[data-order]").forEach(b=>b.onclick=()=>{S.selectedOrder=b.dataset.order;renderOrders();update()})}
 function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),1900)}
 function update(){const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0],id=o?.recipe||Object.keys(RECIPES).find(unlocked)||"burger",r=RECIPES[id],lv=stationLevel(r.station);$("level").textContent=S.level;$("cash").textContent="$"+S.cash.toLocaleString();$("gems").textContent=S.gems;$("rep").textContent=S.reputation+"%";$("xpBar").style.width=Math.min(100,S.xp/S.xpGoal*100)+"%";$("xpText").textContent=S.xp+" / "+S.xpGoal+" XP";$("stationName").textContent=STATIONS.find(x=>x[0]===r.station)?.[2]||"Parrilla";$("stationInfo").textContent="Nivel "+lv+" · "+r.time+"s";$("cookBtn").innerHTML="COCINAR "+r.icon+" "+r.name.toUpperCase()+" <span>"+r.time+"s</span>";$("ingredients").innerHTML=Object.entries(r.req).map(([k,v])=>'<div class="ingredient">'+k+'<small>'+v+" · "+(S.inv[k]||0)+" disponibles</small></div>").join("");$("restaurantLevel").textContent=S.restaurantLevel;$("preparedCount")&&($("preparedCount").textContent=S.prepared.length)}
 function gainXP(n){S.xp+=n;while(S.xp>=S.xpGoal){S.xp-=S.xpGoal;S.level++;S.xpGoal=Math.floor(S.xpGoal*1.5);toast("⭐ Nivel "+S.level+" desbloqueado")}checkRestaurant()}
@@ -82,7 +82,7 @@ function serve(o){
  const counts={};items.forEach(x=>counts[x]=(counts[x]||0)+1);
  for(const [id,n] of Object.entries(counts)){if(S.prepared.filter(x=>x.recipe===id).length<n){toast("🍽️ Falta preparar "+RECIPES[id].name);return}}
  for(const [id,n] of Object.entries(counts)){for(let i=0;i<n;i++){const idx=S.prepared.findIndex(x=>x.recipe===id);S.prepared.splice(idx,1)}}
- S.cash+=o.reward;S.totalOrders++;gainXP(items.reduce((n,x)=>n+RECIPES[x].xp,0)*(o.vip?2:1));
+ S.cash+=o.reward;S.totalOrders++;if(o.special==="critic")S.reputation=Math.min(100,S.reputation+2);gainXP(items.reduce((n,x)=>n+RECIPES[x].xp,0)*(o.vip?2:1));
  S.orders=S.orders.filter(x=>x.id!==o.id);S.selectedOrder=S.orders[0]?.id||null;
  toast((o.vip?"💎 VIP satisfecho · ":"")+"Orden servida +$"+o.reward);setTimeout(addOrder,Math.max(450,1200-S.marketing*90));renderOrders();update()
 }
