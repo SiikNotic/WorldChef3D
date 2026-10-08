@@ -14,6 +14,25 @@ const INITIAL_INV={bread:20,meat:20,cheese:20,lettuce:20,tomato:20,potato:30,dou
 function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{},expansion:0,city:"newyork"}}
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null"),d=fresh();if(!x)return d;Object.assign(d,x,{employees:{...d.employees,...(x.employees||{})},recipeLevels:{...d.recipeLevels,...(x.recipeLevels||{})},stations:{...d.stations,...(x.stations||{})},inv:{...d.inv,...(x.inv||{})}});d.orders=Array.isArray(x.orders)?x.orders:[];d.prepared=Array.isArray(x.prepared)?x.prepared:[];return d}catch{return fresh()}}
 let S=load(), cooking=false;
+// --- LIVE EVENTS ---
+const EVENTS=[
+ {id:"halloween",name:"🎃 Noche de Halloween",duration:900,bonus:1.5,orders:1.35,desc:"Clientes disfrazados pagan 50% más."},
+ {id:"sports",name:"🏆 Final del Campeonato",duration:1200,bonus:1.8,orders:1.5,desc:"La ciudad se llena de fanáticos."},
+ {id:"alien",name:"👽 Visita Galáctica",duration:1800,bonus:2.2,orders:1.2,desc:"Los visitantes cósmicos pagan una fortuna."}
+];
+function eventState(){return S.activeEvent||null}
+function startEvent(id){
+ const e=EVENTS.find(x=>x.id===id); if(!e||S.activeEvent)return;
+ S.activeEvent={id:e.id,left:e.duration};
+ save(); toast(e.name+" comenzó");
+}
+function eventTick(dt){
+ const a=eventState(); if(!a)return;
+ a.left-=dt;
+ if(a.left<=0){S.activeEvent=null;save();toast("✨ El evento terminó")}
+}
+function eventData(){const a=eventState();return a?EVENTS.find(x=>x.id===a.id)||null:null}
+
 function save(){localStorage.setItem(KEY,JSON.stringify(S))}
 const scene=new THREE.Scene();const cityTheme={newyork:0x9eb7c4,tokyo:0x687b91,paris:0xb9a58f,china:0xc98f72,argentina:0x86a9b8};const initialCityColor=cityTheme[S.city]||cityTheme.newyork;scene.background=new THREE.Color(initialCityColor);scene.fog=new THREE.Fog(initialCityColor,13,30);
 const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,100);camera.position.set(8,8,10);
