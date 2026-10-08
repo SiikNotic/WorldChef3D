@@ -34,7 +34,7 @@ function eventTick(dt){
 function eventData(){const a=eventState();return a?EVENTS.find(x=>x.id===a.id)||null:null}
 
 function save(){localStorage.setItem(KEY,JSON.stringify(S))}
-rebuildStaff();\nconst scene=new THREE.Scene();const cityTheme={newyork:0x9eb7c4,tokyo:0x687b91,paris:0xb9a58f,china:0xc98f72,argentina:0x86a9b8};const initialCityColor=cityTheme[S.city]||cityTheme.newyork;scene.background=new THREE.Color(initialCityColor);scene.fog=new THREE.Fog(initialCityColor,13,30);
+const scene=new THREE.Scene();const cityTheme={newyork:0x9eb7c4,tokyo:0x687b91,paris:0xb9a58f,china:0xc98f72,argentina:0x86a9b8};const initialCityColor=cityTheme[S.city]||cityTheme.newyork;scene.background=new THREE.Color(initialCityColor);scene.fog=new THREE.Fog(initialCityColor,13,30);
 const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,100);camera.position.set(8,8,10);
 const renderer=new THREE.WebGLRenderer({canvas:$("game"),antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;
 
@@ -181,7 +181,7 @@ function serve(o){
  const counts={};items.forEach(x=>counts[x]=(counts[x]||0)+1);
  for(const [id,n] of Object.entries(counts)){if(S.prepared.filter(x=>x.recipe===id).length<n){toast("🍽️ Falta preparar "+RECIPES[id].name);return}}
  for(const [id,n] of Object.entries(counts)){for(let i=0;i<n;i++){const idx=S.prepared.findIndex(x=>x.recipe===id);S.prepared.splice(idx,1)}}
- S.cash+=o.reward;S.totalOrders++;if(o.special==="critic")S.reputation=Math.min(100,S.reputation+2);gainXP(items.reduce((n,x)=>n+RECIPES[x].xp,0)*(o.vip?2:1));
+ S.cash+=o.reward;S.totalEarnings=(S.totalEarnings||0)+o.reward;S.totalOrders++;if(o.vip)S.vipServed=(S.vipServed||0)+1;if(o.special)S.specialServed=(S.specialServed||0)+1;if(o.special==="critic")S.reputation=Math.min(100,S.reputation+2);gainXP(items.reduce((n,x)=>n+RECIPES[x].xp,0)*(o.vip?2:1));
  S.orders=S.orders.filter(x=>x.id!==o.id);S.selectedOrder=S.orders[0]?.id||null;
  toast((o.vip?"💎 VIP satisfecho · ":"")+"Orden servida +$"+o.reward);setTimeout(addOrder,Math.max(450,1200-S.marketing*90));renderOrders();update()
 }
