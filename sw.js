@@ -1,14 +1,23 @@
-const CACHE="worldchef3d-v7";
-const LOCAL=["./","./index.html","./style.css","./game.js","./manifest.webmanifest","./icon.svg"];
-const CDN=["https://cdn.jsdelivr.net/npm/three@0.181.2/build/three.module.js","https://cdn.jsdelivr.net/npm/three@0.181.2/examples/jsm/controls/OrbitControls.js"];
+// WorldChef3D service worker.
+// VERSION must match the ?v= query used in index.html for game.js/style.css
+// and the SW registration URL. Bump it on every release so old caches purge.
+const VERSION="95";
+const CACHE="worldchef3d-v"+VERSION;
+const LOCAL=[
+  "./",
+  "./index.html",
+  "./style.css?v="+VERSION,
+  "./game.js?v="+VERSION,
+  "./manifest.webmanifest",
+  "./icon.svg",
+  "./vendor/three.module.js",
+  "./vendor/OrbitControls.js"
+];
 
 self.addEventListener("install",event=>{
   event.waitUntil(
     caches.open(CACHE)
-      .then(async cache=>{
-        await cache.addAll(LOCAL);
-        await Promise.allSettled(CDN.map(url=>cache.add(url)));
-      })
+      .then(cache=>Promise.allSettled(LOCAL.map(url=>cache.add(url).catch(()=>null))))
       .then(()=>self.skipWaiting())
   );
 });
@@ -35,6 +44,7 @@ self.addEventListener("fetch",event=>{
      url.pathname.endsWith(".svg"));
 
   if(appAsset){
+    // App shell: network first so updates land immediately, cache as fallback offline.
     event.respondWith(
       fetch(event.request)
         .then(response=>{
