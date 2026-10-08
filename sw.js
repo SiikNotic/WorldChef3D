@@ -1,4 +1,4 @@
-const CACHE="worldchef3d-v6";
+const CACHE="worldchef3d-v7";
 const LOCAL=["./","./index.html","./style.css","./game.js","./manifest.webmanifest","./icon.svg"];
 const CDN=["https://cdn.jsdelivr.net/npm/three@0.181.2/build/three.module.js","https://cdn.jsdelivr.net/npm/three@0.181.2/examples/jsm/controls/OrbitControls.js"];
 
