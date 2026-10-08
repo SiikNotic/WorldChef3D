@@ -11,7 +11,7 @@ const RECIPES={
 };
 const STATIONS=[["grill","🔥","Parrilla",1,350],["fryer","🍟","Freidora",2,600],["oven","🍕","Horno",3,1000],["prep","🔪","Preparación",5,1800],["drinks","🥤","Bebidas",2,750],["fridge","🧊","Nevera",1,900],["dish","🧼","Lavaplatos",2,1100]];
 const INITIAL_INV={bread:20,meat:20,cheese:20,lettuce:20,tomato:20,potato:30,dough:10,pepperoni:10,rice:20,fish:10,seaweed:10,syrup:20};
-function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,totalEarnings:0,vipServed:0,specialServed:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,selectedStationRecipe:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{},settings:{sound:true,language:"es"},expansion:0,city:"newyork",activeEvent:null,activeStation:null}}
+function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,totalEarnings:0,vipServed:0,specialServed:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,selectedStationRecipe:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{},settings:{sound:true,music:true,language:"es"},expansion:0,city:"newyork",activeEvent:null,activeStation:null}}
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null"),d=fresh();if(!x)return d;Object.assign(d,x,{employees:{...d.employees,...(x.employees||{})},recipeLevels:{...d.recipeLevels,...(x.recipeLevels||{})},stations:{...d.stations,...(x.stations||{})},inv:{...d.inv,...(x.inv||{})}});d.orders=Array.isArray(x.orders)?x.orders:[];d.prepared=Array.isArray(x.prepared)?x.prepared:[];return d}catch{return fresh()}}
 let S=load(), cooking=false;
 // --- LIVE EVENTS ---
@@ -207,6 +207,7 @@ function serve(o){
 function serveSelected(){const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0];if(!o)return toast("No hay cliente seleccionado");serve(o)}
 function buyIngredient(k){if(S.cash<25)return toast("No tienes suficiente dinero");if(inventoryUsed()+10>inventoryCapacity())return toast("🧊 Almacenamiento lleno");S.cash-=25;S.inv[k]=(S.inv[k]||0)+10;save();update();modal("inventory")}
 function toggleSound(){S.settings=S.settings||{};S.settings.sound=!S.settings.sound;save();if(S.settings.sound)WC.beep(700,.08);modal("settings")}
+function toggleMusic(){S.settings=S.settings||{};S.settings.music=!S.settings.music;if(S.settings.music){WC.startMusic()}else{WC.stopMusic()}save();modal("settings")}
 function modal(kind){
   $("modal").classList.remove("hidden");
   let html="";
@@ -260,7 +261,7 @@ function modal(kind){
       "<div class='list-row'><div class='main'><b>Reiniciar</b><small>Borra todo el progreso.</small></div><button class='mini-btn' data-reset='1'>RESET</button></div></div>";
   }
   $("modalContent").innerHTML=html;
-  $("modalContent").querySelector("#soundToggle")?.addEventListener("click",toggleSound);\n  $("modalContent").querySelectorAll("[data-emp]").forEach(b=>b.onclick=()=>{upgradeEmployee(b.dataset.emp);modal("employees")});
+  $("modalContent").querySelector("#soundToggle")?.addEventListener("click",toggleSound);\n    $("modalContent").querySelector("#musicToggle")?.addEventListener("click",toggleMusic);\n  $("modalContent").querySelectorAll("[data-emp]").forEach(b=>b.onclick=()=>{upgradeEmployee(b.dataset.emp);modal("employees")});
   $("modalContent").querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>buyIngredient(b.dataset.buy));
   $("modalContent").querySelector("[data-expansion]")?.addEventListener("click",()=>expandRestaurant());
   $("modalContent").querySelectorAll("[data-city-index]").forEach(b=>b.onclick=()=>travelCity(+b.dataset.cityIndex));
@@ -304,7 +305,17 @@ const WC={
       o.connect(g);g.connect(this.audio.destination);o.start();o.stop(this.audio.currentTime+duration);
     }catch{}
   },
-  achievements:{
+  startMusic(){
+    if(this.musicTimer||S.settings?.music===false)return;
+    try{
+      if(!this.audio)this.audio=new (window.AudioContext||window.webkitAudioContext)();
+      const notes=[220,247,262,294,330,294,262,247];
+      const play=()=>{if(S.settings?.music===false)return;this.beep(notes[this.musicStep%notes.length],.12,"triangle");this.musicStep++};
+      play();this.musicTimer=setInterval(play,650);
+    }catch{}
+  },
+  stopMusic(){if(this.musicTimer){clearInterval(this.musicTimer);this.musicTimer=null}}
+,  achievements:{
     first_order:["🍽️ Primera orden",s=>s.totalOrders>=1],
     ten_orders:["🔥 En racha",s=>s.totalOrders>=10],
     vip:["💎 Cliente VIP",s=>(s.vipServed||0)>=1],
@@ -340,7 +351,7 @@ function showTutorial(){
 }
 function applyOfflineProgress(){const now=Date.now(),last=Number(S.lastSeen||now),elapsed=Math.max(0,Math.min(4*3600,(now-last)/1000));if(elapsed<60){S.lastSeen=now;return}const cookLevel=S.employees?.cook?.level||0,waiterLevel=S.employees?.waiter?.level||0;if(!cookLevel&&!waiterLevel){S.lastSeen=now;return;}const cycles=Math.floor(elapsed/30),earnings=cycles*(35+cookLevel*12+waiterLevel*15);if(earnings>0){S.cash+=earnings;S.lastSeen=now;setTimeout(()=>toast("🌙 Mientras estabas fuera +$"+earnings),700);save()}}
 window.addEventListener("pagehide",()=>{S.lastSeen=Date.now();save()});
-document.addEventListener("pointerdown",()=>WC.beep(420,.025),{once:true});
+document.addEventListener("pointerdown",()=>{WC.beep(420,.025);WC.startMusic()},{once:true});
 setInterval(save,5000);
 applyOfflineProgress();
 setTimeout(showTutorial,500);
