@@ -11,7 +11,7 @@ const RECIPES={
 };
 const STATIONS=[["grill","🔥","Parrilla",1,350],["fryer","🍟","Freidora",2,600],["oven","🍕","Horno",3,1000],["prep","🔪","Preparación",5,1800],["drinks","🥤","Bebidas",2,750],["fridge","🧊","Nevera",1,900],["dish","🧼","Lavaplatos",2,1100]];
 const INITIAL_INV={bread:20,meat:20,cheese:20,lettuce:20,tomato:20,potato:30,dough:10,pepperoni:10,rice:20,fish:10,seaweed:10,syrup:20};
-function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{}}}
+function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{},expansion:0}}
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null"),d=fresh();if(!x)return d;Object.assign(d,x,{employees:{...d.employees,...(x.employees||{})},recipeLevels:{...d.recipeLevels,...(x.recipeLevels||{})},stations:{...d.stations,...(x.stations||{})},inv:{...d.inv,...(x.inv||{})}});d.orders=Array.isArray(x.orders)?x.orders:[];d.prepared=Array.isArray(x.prepared)?x.prepared:[];return d}catch{return fresh()}}
 let S=load(), cooking=false;
 function save(){localStorage.setItem(KEY,JSON.stringify(S))}
@@ -20,9 +20,10 @@ const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,100);camer
 const renderer=new THREE.WebGLRenderer({canvas:$("game"),antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;
 const controls=new OrbitControls(camera,renderer.domElement);controls.enablePan=false;controls.minDistance=8;controls.maxDistance=16;controls.minPolarAngle=.7;controls.maxPolarAngle=1.25;controls.target.set(0,1,0);
 scene.add(new THREE.HemisphereLight(0xffffff,0x405060,2));const sun=new THREE.DirectionalLight(0xffffff,3);sun.position.set(4,10,5);sun.castShadow=true;scene.add(sun);
+const restaurantWidth=14+(S.expansion||0)*3, restaurantDepth=12+(S.expansion||0)*2;
 function box(w,h,d,c,x,y,z){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:c,roughness:.75}));o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;scene.add(o);return o}
 function cyl(r,h,c,x,y,z){const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,20),new THREE.MeshStandardMaterial({color:c,roughness:.7}));o.position.set(x,y,z);o.castShadow=true;scene.add(o);return o}
-box(14,.25,12,0x3b424b,0,-.15,0);box(14,4,.25,0x22272f,0,2,-5.8);box(.25,4,12,0x252a32,-7,2,0);box(.25,4,12,0x252a32,7,2,0);
+box(restaurantWidth,.25,restaurantDepth,0x3b424b,0,-.15,0);box(restaurantWidth,4,.25,0x22272f,0,2,-restaurantDepth/2+.1);box(.25,4,restaurantDepth,0x252a32,-restaurantWidth/2,2,0);box(.25,4,restaurantDepth,0x252a32,restaurantWidth/2,2,0);
 box(5,.25,2.2,0x8b6b45,-3,1.6,-1.6);box(2.8,.25,2.2,0x8b6b45,3,1.6,-1.6);
 for(let i=0;i<4;i++){let x=-5+i*3.3;box(2.7,1,1,0x15181d,x,.5,-4.3);cyl(.27,.35,0x5c626a,x-.65,1.18,-4.3);cyl(.27,.35,0x5c626a,x+.65,1.18,-4.3)}
 for(let k=0;k<3;k++){let x=-4+k*4;box(.7,.9,.7,0x9b673e,x,.45,3);cyl(.65,.12,0x6d4c35,x,.95,2.7)}
@@ -55,7 +56,7 @@ const oldServe=serve;
 serve=function(o){oldServe(o);syncCustomers()};
 
 function addOrder(){
- const capacity=3+Math.max(0,S.restaurantLevel-1)+(S.employees?.waiter?.level||0);
+ const capacity=3+Math.max(0,S.restaurantLevel-1)+(S.employees?.waiter?.level||0)+(S.expansion||0)*2;
  if(S.orders.length>=capacity)return;
  const pool=Object.keys(RECIPES).filter(unlocked);
  const first=pool[Math.floor(Math.random()*pool.length)]||"burger";
@@ -98,10 +99,11 @@ html="<h2>👥 Personal</h2><p>Contrata empleados para preparar y atender más r
 }
 else if(kind==="contracts"){const a=S.activeContract;html="<h2>📋 Contratos</h2><p>Produce platos reales dentro del límite de tiempo.</p>"+(a?'<div class="contract active"><b>📦 '+a.name+'</b><small>Progreso '+a.done+"/"+a.need+" · "+Math.ceil(a.left/60)+" min</small><div class='progress'><span style='width:"+(a.done/a.need*100)+"%'></span></div></div>":"<div class='list'>"+[["🎂 Cumpleaños",20,2500,1],["🏢 Corporativo",60,8500,3],["👽 Galáctico",200,35000,8]].map(c=>'<div class="list-row"><div class="main"><b>'+c[0]+'</b><small>'+c[1]+" platos · 10 min · Restaurante "+c[3]+'</small></div><button class="mini-btn green" data-contract="'+c[1]+"|"+c[2]+"|"+c[3]+"|"+c[0]+'">ACEPTAR</button></div>').join("")+"</div>")};
 else if(kind==="world")html="<h2>🌎 Mundo</h2><div class='list'>"+[["🇺🇸 Nueva York",1],["🇯🇵 Tokio",11],["🇫🇷 París",21],["🇨🇳 China",31],["🇦🇷 Argentina",41]].map(c=>'<div class="list-row '+(S.level>=c[1]?"":"locked")+'"><div class="main"><b>'+c[0]+'</b><small>'+(S.level>=c[1]?"Disponible":"Nivel "+c[1])+'</small></div><button class="mini-btn">'+(S.level>=c[1]?"ENTRAR":"🔒")+"</button></div>").join("")+"</div>";
-else html="<h2>🏪 Restaurante</h2><p>Reputación ⭐ "+S.reputation+"% · Nivel "+S.restaurantLevel+"</p><div class='list'><div class='list-row'><div class='main'><b>Pedidos completados</b><small>"+S.totalOrders+"</small></div></div><div class='list-row'><div class='main'><b>Marketing</b><small>Mejora la llegada de clientes.</small></div><button class='mini-btn green' data-marketing='1'>$500</button></div><div class='list-row'><div class='main'><b>Guardar</b><small>Guardado automático en este dispositivo.</small></div></div><div class='list-row'><div class='main'><b>Reiniciar</b><small>Borra todo el progreso.</small></div><button class='mini-btn' data-reset='1'>RESET</button></div></div>";
+else html="<h2>🏪 Restaurante</h2><p>Reputación ⭐ "+S.reputation+"% · Nivel "+S.restaurantLevel+" · Expansión "+S.expansion+"</p><div class='list'><div class='list-row'><div class='main'><b>Pedidos completados</b><small>"+S.totalOrders+"</small></div></div><div class='list-row'><div class='main'><b>Marketing</b><small>Mejora la llegada de clientes.</small></div><button class='mini-btn green' data-marketing='1'>$500</button></div><div class='list-row'><div class='main'><b>Guardar</b><small>Guardado automático en este dispositivo.</small></div></div><div class='list-row'><div class='main'><b>Reiniciar</b><small>Borra todo el progreso.</small></div><button class='mini-btn' data-reset='1'>RESET</button></div></div>";
 $("modalContent").innerHTML=html;
 $("modalContent").querySelectorAll("[data-emp]").forEach(b=>b.onclick=()=>{upgradeEmployee(b.dataset.emp);modal("employees")});
 $("modalContent").querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>buyIngredient(b.dataset.buy));
+$("modalContent").querySelector("[data-expansion]")?.addEventListener("click",()=>expandRestaurant());
 $("modalContent").querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{const id=b.dataset.st,s=STATIONS.find(x=>x[0]===id),lv=stationLevel(id),price=lv?Math.round(s[4]*(lv+1)):s[4];if(S.cash<price)return toast("Necesitas $"+price);if(!lv&&S.level<s[3])return toast("🔒 Necesitas nivel "+s[3]);S.cash-=price;S.stations[id]=(lv||0)+1;toast("🔧 "+s[2]+" mejorada");update();modal("upgrades")});
 $("modalContent").querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>{const id=b.dataset.rec;if(!unlocked(id))return toast("🔒 Primero desbloquea la estación");const lv=S.recipeLevels[id]||1,cost=500*lv;if(S.cash<cost)return toast("Necesitas $"+cost);S.cash-=cost;S.recipeLevels[id]=lv+1;toast("📖 Receta mejorada");update();modal("recipes")});
 $("modalContent").querySelectorAll("[data-contract]").forEach(b=>b.onclick=()=>{if(S.activeContract)return toast("Ya tienes un contrato activo");const[need,reward,req,name]=b.dataset.contract.split("|");if(S.restaurantLevel<+req)return toast("🔒 Restaurante nivel "+req);S.activeContract={name,need:+need,reward:+reward,done:0,left:600};toast("📋 Contrato aceptado");update();modal("contracts")});
@@ -116,6 +118,7 @@ function hireEmployee(role){
   if(S.cash<cost) return toast("Necesitas $"+cost);
   S.cash-=cost; S.employees[role]={level:1}; save(); toast("👥 Empleado contratado");
 }
+function expandRestaurant(){const current=S.expansion||0;if(current>=4)return toast("🏪 Expansión máxima alcanzada");const cost=2500*(current+1);if(S.cash<cost)return toast("Necesitas $"+cost.toLocaleString());S.cash-=cost;S.expansion=current+1;save();toast("🏗️ Restaurante expandido");setTimeout(()=>location.reload(),500)}
 function upgradeEmployee(role){
   const e=S.employees?.[role];
   if(!e) return hireEmployee(role);
@@ -173,7 +176,7 @@ function showTutorial(){
   const render=()=>{const [a,b]=steps[n];el.innerHTML="<div class='tutorial-card'><div class='tutorial-step'>"+(n+1)+" / "+steps.length+"</div><h2>"+a+"</h2><p>"+b+"</p><button id='tutorialNext'>"+(n===steps.length-1?"EMPEZAR":"SIGUIENTE")+"</button></div>";el.querySelector("button").onclick=()=>{WC.beep(620);if(n===steps.length-1){S.tutorialDone=true;save();el.remove()}else{n++;render()}}};
   document.body.appendChild(el);render();
 }
-function applyOfflineProgress(){const now=Date.now(),last=Number(S.lastSeen||now),elapsed=Math.max(0,Math.min(4*3600,(now-last)/1000));if(elapsed<60)return;const cookLevel=S.employees?.cook?.level||0,waiterLevel=S.employees?.waiter?.level||0;if(!cookLevel&&!waiterLevel)return;const cycles=Math.floor(elapsed/30),earnings=cycles*(35+cookLevel*12+waiterLevel*15);if(earnings>0){S.cash+=earnings;S.lastSeen=now;setTimeout(()=>toast("🌙 Mientras estabas fuera +$"+earnings),700);save()}}
+function applyOfflineProgress(){const now=Date.now(),last=Number(S.lastSeen||now),elapsed=Math.max(0,Math.min(4*3600,(now-last)/1000));if(elapsed<60){S.lastSeen=now;return}const cookLevel=S.employees?.cook?.level||0,waiterLevel=S.employees?.waiter?.level||0;if(!cookLevel&&!waiterLevel)return;const cycles=Math.floor(elapsed/30),earnings=cycles*(35+cookLevel*12+waiterLevel*15);if(earnings>0){S.cash+=earnings;S.lastSeen=now;setTimeout(()=>toast("🌙 Mientras estabas fuera +$"+earnings),700);save()}}
 window.addEventListener("pagehide",()=>{S.lastSeen=Date.now();save()});
 document.addEventListener("pointerdown",()=>WC.beep(420,.025),{once:true});
 setInterval(save,5000);\napplyOfflineProgress();\nsetTimeout(showTutorial,500);
