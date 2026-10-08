@@ -253,8 +253,8 @@ function modal(kind){
     const unlockedCount=entries.filter(([id])=>S.achievements?.[id]).length;
     html="<h2>🏆 Logros</h2><p>"+unlockedCount+"/"+entries.length+" desbloqueados.</p><div class='list'>"+entries.map(([id,[name]])=>'<div class="list-row '+(S.achievements?.[id]?"":"locked")+'"><div class="main"><b>'+name+'</b><small>'+(S.achievements?.[id]?"Desbloqueado":"Bloqueado")+"</small></div><span>"+(S.achievements?.[id]?"🏆":"🔒")+"</span></div>").join("")+"</div>";
   }else if(kind==="world"){
-    const cities=[["🇺🇸 Nueva York","newyork",1],["🇯🇵 Tokio","tokyo",10],["🇫🇷 París","paris",20],["🇨🇳 China","china",30],["🇦🇷 Argentina","argentina",40]];
-    html="<h2>🌎 Mundo</h2><p>Viaja cuando tu restaurante alcance el nivel requerido.</p><div class='list'>"+cities.map((x,i)=>'<div class="list-row '+(S.restaurantLevel>=x[2]?"":"locked")+'"><div class="main"><b>'+x[0]+'</b><small>'+(S.restaurantLevel>=x[2]?"Disponible":"Restaurante nivel "+x[2])+'</small></div><button class="mini-btn" data-city-index="'+i+'">'+(S.restaurantLevel>=x[2]?"ENTRAR":"🔒")+"</button></div>").join("")+"</div>";
+    const cities=[["🇺🇸 Nueva York","newyork"],["🇯🇵 Tokio","tokyo"],["🇫🇷 París","paris"],["🇨🇳 China","china"],["🇦🇷 Argentina","argentina"]];
+    html="<h2>🌎 Mundo</h2><p>Cada ciudad exige progreso real antes de desbloquearse.</p><div class='list'>"+cities.map((x,i)=>{const r=cityRequirements(x[1]),ok=cityUnlocked(x[1]);return '<div class="list-row '+(ok?"":"locked")+'"><div class="main"><b>'+x[0]+'</b><small>'+(ok?"Disponible":"Nivel "+r.level+" · $"+r.earnings.toLocaleString()+" acumulados · "+r.recipes+" recetas Lv3 · "+r.contracts+" contratos · "+r.rep+"% reputación")+'</small></div><button class="mini-btn" data-city-index="'+i+'" '+(ok?"":"disabled")+'>'+(ok?"ENTRAR":"🔒")+"</button></div>"}).join("")+"</div>";
   }else{
     html="<h2>🏪 Restaurante</h2><p>Reputación ⭐ "+S.reputation+"% · Nivel "+S.restaurantLevel+" · Expansión "+S.expansion+"</p><div class='list'>"+
       "<div class='list-row'><div class='main'><b>Pedidos completados</b><small>"+S.totalOrders+"</small></div></div>"+
@@ -283,16 +283,31 @@ function hireEmployee(role){
   if(S.employees[role]) return toast("Ese empleado ya está contratado");
   const costs={cook:1500,waiter:1800,cleaner:1200}, cost=costs[role]||1500;
   if(S.cash<cost) return toast("Necesitas $"+cost);
-  S.cash-=cost; S.employees[role]={level:1}; save(); toast("👥 Empleado contratado");
+  S.cash-=cost; S.employees[role]={level:1}; rebuildStaff(); save(); toast("👥 Empleado contratado");
 }
-function travelCity(index){const cities=[["newyork","🇺🇸 Nueva York",1,0x9eb7c4],["tokyo","🇯🇵 Tokio",10,0x687b91],["paris","🇫🇷 París",20,0xb9a58f],["china","🇨🇳 China",30,0xc98f72],["argentina","🇦🇷 Argentina",40,0x86a9b8]];const city=cities[index];if(!city)return;if(S.restaurantLevel<city[2])return toast("🔒 Necesitas Restaurante nivel "+city[2]);S.city=city[0];scene.background=new THREE.Color(city[3]);scene.fog.color=new THREE.Color(city[3]);buildCityProps(S.city);toast("🌎 "+city[1]);save();modal("world")}
+function cityRequirements(city){
+ const req={
+  newyork:{level:1,earnings:0,recipes:0,contracts:0,rep:0},
+  tokyo:{level:10,earnings:50000,recipes:5,contracts:3,rep:90},
+  paris:{level:20,earnings:150000,recipes:5,contracts:5,rep:90},
+  china:{level:30,earnings:500000,recipes:6,contracts:8,rep:92},
+  argentina:{level:40,earnings:1000000,recipes:6,contracts:12,rep:95}
+ };
+ return req[city]||req.newyork;
+}
+function masteredRecipes(){return Object.values(S.recipeLevels||{}).filter(l=>l>=3).length}
+function cityUnlocked(city){
+ const r=cityRequirements(city);
+ return S.restaurantLevel>=r.level&&(S.totalEarnings||0)>=r.earnings&&masteredRecipes()>=r.recipes&&(S.completedContracts||0)>=r.contracts&&S.reputation>=r.rep;
+}
+function travelCity(index){const cities=[["newyork","🇺🇸 Nueva York"],["tokyo","🇯🇵 Tokio"],["paris","🇫🇷 París"],["china","🇨🇳 China"],["argentina","🇦🇷 Argentina"]];const city=cities[index];if(!city)return;if(!cityUnlocked(city[0]))return toast("🔒 Aún no cumples los requisitos de "+city[1]);S.city=city[0];const colors={newyork:0x9eb7c4,tokyo:0x687b91,paris:0xb9a58f,china:0xc98f72,argentina:0x86a9b8};scene.background=new THREE.Color(colors[S.city]);scene.fog.color=new THREE.Color(colors[S.city]);buildCityProps(S.city);toast("🌎 "+city[1]);save();modal("world")}
 function expandRestaurant(){const current=S.expansion||0;if(current>=4)return toast("🏪 Expansión máxima alcanzada");const cost=2500*(current+1);if(S.cash<cost)return toast("Necesitas $"+cost.toLocaleString());S.cash-=cost;S.expansion=current+1;save();toast("🏗️ Restaurante expandido");setTimeout(()=>location.reload(),500)}
 function upgradeEmployee(role){
   const e=S.employees?.[role];
   if(!e) return hireEmployee(role);
   const cost=1000*e.level;
   if(S.cash<cost) return toast("Necesitas $"+cost);
-  S.cash-=cost; e.level++; save(); toast("⭐ Empleado mejorado");
+  S.cash-=cost; e.level++; rebuildStaff(); save(); toast("⭐ Empleado mejorado");
 }
 function contractCapacityWarning(x){
  const loads={};
