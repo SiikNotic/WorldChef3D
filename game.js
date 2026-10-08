@@ -63,7 +63,7 @@ function addOrder(){
  const combo=S.restaurantLevel>=4&&Math.random()<.28;
  const second=combo?(pool.filter(x=>x!==first)[Math.floor(Math.random()*Math.max(1,pool.filter(x=>x!==first).length))]||first):null;
  const items=second?[first,second]:[first];
- const vip=Math.random()<.07, base=Math.max(...items.map(x=>RECIPES[x].time));
+ const vip=Math.random()<Math.min(.18,.07+S.marketing*.015), base=Math.max(...items.map(x=>RECIPES[x].time));
  const waiterLevel=S.employees?.waiter?.level||0; const t=((vip?58:68)+Math.random()*14)*(1+waiterLevel*.08);
  const reward=Math.round(items.reduce((n,x)=>n+recipeValue(x),0)*(vip?2:1));
  S.orders.push({id:crypto.randomUUID(),recipe:first,items,vip,time:t,left:t,reward});
@@ -84,7 +84,7 @@ function serve(o){
  for(const [id,n] of Object.entries(counts)){for(let i=0;i<n;i++){const idx=S.prepared.findIndex(x=>x.recipe===id);S.prepared.splice(idx,1)}}
  S.cash+=o.reward;S.totalOrders++;gainXP(items.reduce((n,x)=>n+RECIPES[x].xp,0)*(o.vip?2:1));
  S.orders=S.orders.filter(x=>x.id!==o.id);S.selectedOrder=S.orders[0]?.id||null;
- toast((o.vip?"💎 VIP satisfecho · ":"")+"Orden servida +$"+o.reward);setTimeout(addOrder,1200);renderOrders();update()
+ toast((o.vip?"💎 VIP satisfecho · ":"")+"Orden servida +$"+o.reward);setTimeout(addOrder,Math.max(450,1200-S.marketing*90));renderOrders();update()
 }
 function serveSelected(){const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0];if(!o)return toast("No hay cliente seleccionado");serve(o)}
 function buyIngredient(k){if(S.cash<25)return toast("No tienes suficiente dinero");S.cash-=25;S.inv[k]=(S.inv[k]||0)+10;update();modal("inventory")}
