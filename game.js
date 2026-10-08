@@ -37,6 +37,30 @@ function save(){localStorage.setItem(KEY,JSON.stringify(S))}
 rebuildStaff();\nconst scene=new THREE.Scene();const cityTheme={newyork:0x9eb7c4,tokyo:0x687b91,paris:0xb9a58f,china:0xc98f72,argentina:0x86a9b8};const initialCityColor=cityTheme[S.city]||cityTheme.newyork;scene.background=new THREE.Color(initialCityColor);scene.fog=new THREE.Fog(initialCityColor,13,30);
 const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,100);camera.position.set(8,8,10);
 const renderer=new THREE.WebGLRenderer({canvas:$("game"),antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;
+
+// --- 3D TOUCH INTERACTION ---
+const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
+function selectStation3D(id){
+ const lv=stationLevel(id), info=STATIONS.find(x=>x[0]===id);
+ if(!info)return;
+ $("stationName").textContent=info[2];
+ $("stationInfo").textContent=lv?"Nivel "+lv:"Bloqueada";
+ toast(lv?"🔧 "+info[1]+" "+info[2]+" seleccionada":"🔒 Requiere nivel "+info[3]);
+ const recipe=Object.entries(RECIPES).find(([rid,r])=>r.station===id&&unlocked(rid));
+ if(recipe){S.selectedStationRecipe=recipe[0];update()}
+}
+function pointerStation(ev){
+ const rect=renderer.domElement.getBoundingClientRect();
+ pointer.x=((ev.clientX-rect.left)/rect.width)*2-1;
+ pointer.y=-((ev.clientY-rect.top)/rect.height)*2+1;
+ raycaster.setFromCamera(pointer,camera);
+ const hit=raycaster.intersectObjects(stationMeshes,true)[0];
+ if(hit){
+  let g=hit.object;while(g.parent&&g.parent!==stationGroup)g=g.parent;
+  if(g.userData.station)selectStation3D(g.userData.station);
+ }
+}
+renderer.domElement.addEventListener("pointerup",pointerStation);
 const controls=new OrbitControls(camera,renderer.domElement);controls.enablePan=false;controls.minDistance=8;controls.maxDistance=16;controls.minPolarAngle=.7;controls.maxPolarAngle=1.25;controls.target.set(0,1,0);
 scene.add(new THREE.HemisphereLight(0xffffff,0x405060,2));const sun=new THREE.DirectionalLight(0xffffff,3);sun.position.set(4,10,5);sun.castShadow=true;scene.add(sun);
 const restaurantWidth=14+(S.expansion||0)*3, restaurantDepth=12+(S.expansion||0)*2;
