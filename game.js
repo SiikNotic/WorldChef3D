@@ -377,6 +377,7 @@ function showTutorial(){
 }
 function applyOfflineProgress(){const now=Date.now(),last=Number(S.lastSeen||now),elapsed=Math.max(0,Math.min(4*3600,(now-last)/1000));if(elapsed<60){S.lastSeen=now;return}const cookLevel=S.employees?.cook?.level||0,waiterLevel=S.employees?.waiter?.level||0;if(!cookLevel&&!waiterLevel){S.lastSeen=now;return;}const cycles=Math.floor(elapsed/30),earnings=cycles*(35+cookLevel*12+waiterLevel*15);if(earnings>0){S.cash+=earnings;S.lastSeen=now;setTimeout(()=>toast("🌙 Mientras estabas fuera +$"+earnings),700);save()}}
 window.addEventListener("pagehide",()=>{S.lastSeen=Date.now();save()});
+document.addEventListener("visibilitychange",()=>{if(document.hidden){WC.stopMusic();S.lastSeen=Date.now();save()}else{loop.last=performance.now();if(S.settings?.music!==false)WC.startMusic()}});
 document.addEventListener("pointerdown",()=>{WC.beep(420,.025);WC.startMusic()},{once:true});
 setInterval(save,5000);
 applyOfflineProgress();
