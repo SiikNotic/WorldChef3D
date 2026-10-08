@@ -88,30 +88,61 @@ function serve(o){
 }
 function serveSelected(){const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0];if(!o)return toast("No hay cliente seleccionado");serve(o)}
 function buyIngredient(k){if(S.cash<25)return toast("No tienes suficiente dinero");S.cash-=25;S.inv[k]=(S.inv[k]||0)+10;update();modal("inventory")}
-function modal(kind){$("modal").classList.remove("hidden");let html="";
-if(kind==="inventory")html="<h2>📦 Inventario</h2><p>Compra lotes de 10.</p><div class='list'>"+Object.entries(S.inv).map(([k,v])=>'<div class="list-row"><div class="main"><b>'+k+'</b><small>'+v+" unidades</small></div><button class='mini-btn green' data-buy='"+k+"'>$25 +10</button></div>").join("")+"</div>";
-else if(kind==="upgrades")html="<h2>🔧 Cocina</h2><p>Las estaciones reducen tiempos y desbloquean recetas.</p><div class='list'>"+STATIONS.map(s=>{const[id,ic,n,req,cost]=s,lv=stationLevel(id),price=lv?Math.round(cost*(lv+1)):cost;return '<div class="list-row '+(!lv&&S.level<req?"locked":"")+'"><div class="main"><b>'+ic+" "+n+'</b><small>'+(lv?"Nivel "+lv+" → "+(lv+1):"Desbloqueo nivel "+req)+'</small></div><button class="mini-btn green" data-st="'+id+'" '+(!lv&&S.level<req?"disabled":"")+'>'+price.toLocaleString()+"</button></div>"}).join("")+"</div>";
-else if(kind==="recipes")html="<h2>📖 Recetas</h2><div class='list'>"+Object.entries(RECIPES).map(([id,r])=>{const lv=S.recipeLevels[id]||0,locked=!unlocked(id);return '<div class="list-row '+(locked?"locked":"")+'"><div class="main"><b>'+r.icon+" "+r.name+'</b><small>'+(locked?"🔒 Requiere estación "+r.station:"Nivel "+(lv||1)+" · $"+recipeValue(id)+" por orden")+'</small></div><button class="mini-btn '+(!locked?"green":"")+'" data-rec="'+id+'">'+(locked?"🔒":"MEJORAR $"+500*(lv||1))+"</button></div>"}).join("")+"</div>";
-else if(kind==="employees"){
-html="<h2>👥 Personal</h2><p>Contrata empleados para preparar y atender más rápido.</p><div class='list'>"+[
-["cook","👨‍🍳 Cocinero",1500],["waiter","🧑‍🍳 Mesero",1800],["cleaner","🧹 Limpieza",1200]
-].map(e=>{const cur=S.employees?.[e[0]],cost=cur?1000*cur.level:e[2];return '<div class="list-row"><div class="main"><b>'+e[1]+'</b><small>'+(cur?"Nivel "+cur.level:"Sin contratar")+'</small></div><button class="mini-btn green" data-emp="'+e[0]+'">'+(cur?"MEJORAR $"+cost:"CONTRATAR $"+cost)+'</button></div>'}).join("")+"</div>";
+function modal(kind){
+  $("modal").classList.remove("hidden");
+  let html="";
+  if(kind==="inventory"){
+    html="<h2>📦 Inventario</h2><p>Compra lotes de 10.</p><div class='list'>"+Object.entries(S.inv).map(([k,v])=>'<div class="list-row"><div class="main"><b>'+k+'</b><small>'+v+" unidades</small></div><button class='mini-btn green' data-buy='"+k+"'>$25 +10</button></div>").join("")+"</div>";
+  }else if(kind==="upgrades"){
+    html="<h2>🔧 Cocina</h2><p>Las estaciones reducen tiempos y desbloquean recetas.</p><div class='list'>"+STATIONS.map(s=>{const[id,ic,n,req,cost]=s,lv=stationLevel(id),price=lv?Math.round(cost*(lv+1)):cost;return '<div class="list-row '+(!lv&&S.level<req?"locked":"")+'"><div class="main"><b>'+ic+" "+n+'</b><small>'+(lv?"Nivel "+lv+" → "+(lv+1):"Desbloqueo nivel "+req)+'</small></div><button class="mini-btn green" data-st="'+id+'" '+(!lv&&S.level<req?"disabled":"")+'>'+price.toLocaleString()+"</button></div>"}).join("")+"</div>";
+  }else if(kind==="recipes"){
+    html="<h2>📖 Recetas</h2><div class='list'>"+Object.entries(RECIPES).map(([id,r])=>{const lv=S.recipeLevels[id]||0,locked=!unlocked(id);return '<div class="list-row '+(locked?"locked":"")+'"><div class="main"><b>'+r.icon+" "+r.name+'</b><small>'+(locked?"🔒 Requiere estación "+r.station:"Nivel "+(lv||1)+" · $"+recipeValue(id)+" por orden")+'</small></div><button class="mini-btn '+(!locked?"green":"")+'" data-rec="'+id+'">'+(locked?"🔒":"MEJORAR $"+500*(lv||1))+"</button></div>"}).join("")+"</div>";
+  }else if(kind==="employees"){
+    html="<h2>👥 Personal</h2><p>Contrata empleados para preparar y atender más rápido.</p><div class='list'>"+[
+      ["cook","👨‍🍳 Cocinero",1500],["waiter","🧑‍🍳 Mesero",1800],["cleaner","🧹 Limpieza",1200]
+    ].map(e=>{const cur=S.employees?.[e[0]],cost=cur?1000*cur.level:e[2];return '<div class="list-row"><div class="main"><b>'+e[1]+'</b><small>'+(cur?"Nivel "+cur.level:"Sin contratar")+'</small></div><button class="mini-btn green" data-emp="'+e[0]+'">'+(cur?"MEJORAR $"+cost:"CONTRATAR $"+cost)+'</button></div>'}).join("")+"</div>";
+  }else if(kind==="contracts"){
+    const a=S.activeContract;
+    const contracts=[
+      {name:"🎂 Cumpleaños",req:{burger:20},reward:2500,time:600,restaurant:1},
+      {name:"🏢 Corporativo",req:{burger:30,fries:30},reward:8500,time:900,restaurant:3},
+      {name:"👽 Galáctico",req:{burger:500,soda:500,fries:300},reward:125000,time:1800,restaurant:8}
+    ];
+    const contractText=x=>Object.entries(x.req).map(([id,n])=>n+" "+RECIPES[id].name).join(" + ");
+    const progress=x=>Object.entries(x.req).reduce((sum,[id,n])=>sum+Math.min(n,x.done?.[id]||0),0);
+    const needTotal=x=>Object.values(x.req).reduce((a,b)=>a+b,0);
+    html="<h2>📋 Contratos</h2><p>Produce platos específicos dentro del límite de tiempo.</p>";
+    if(a){
+      html+='<div class="contract active"><b>📦 '+a.name+'</b><small>Progreso '+progress(a)+"/"+needTotal(a)+" · "+Math.ceil(a.left/60)+" min</small><p>"+Object.entries(a.requirements||{}).map(([id,n])=>RECIPES[id].icon+" "+RECIPES[id].name+": "+(a.done?.[id]||0)+"/"+n).join(" · ")+"</p><div class='progress'><span style='width:"+(progress(a)/needTotal(a)*100)+"%'></span></div></div>";
+    }else{
+      html+="<div class='list'>"+contracts.map((x,i)=>'<div class="list-row"><div class="main"><b>'+x.name+'</b><small>'+contractText(x)+" · "+Math.ceil(x.time/60)+" min · Restaurante "+x.restaurant+'</small></div><button class="mini-btn green" data-contract-index="'+i+'">ACEPTAR</button></div>').join("")+"</div>";
+    }
+  }else if(kind==="achievements"){
+    const entries=Object.entries(WC.achievements);
+    const unlockedCount=entries.filter(([id])=>S.achievements?.[id]).length;
+    html="<h2>🏆 Logros</h2><p>"+unlockedCount+"/"+entries.length+" desbloqueados.</p><div class='list'>"+entries.map(([id,[name]])=>'<div class="list-row '+(S.achievements?.[id]?"":"locked")+'"><div class="main"><b>'+name+'</b><small>'+(S.achievements?.[id]?"Desbloqueado":"Bloqueado")+"</small></div><span>"+(S.achievements?.[id]?"🏆":"🔒")+"</span></div>").join("")+"</div>";
+  }else if(kind==="world"){
+    const cities=[["🇺🇸 Nueva York","newyork",1],["🇯🇵 Tokio","tokyo",10],["🇫🇷 París","paris",20],["🇨🇳 China","china",30],["🇦🇷 Argentina","argentina",40]];
+    html="<h2>🌎 Mundo</h2><p>Viaja cuando tu restaurante alcance el nivel requerido.</p><div class='list'>"+cities.map((x,i)=>'<div class="list-row '+(S.restaurantLevel>=x[2]?"":"locked")+'"><div class="main"><b>'+x[0]+'</b><small>'+(S.restaurantLevel>=x[2]?"Disponible":"Restaurante nivel "+x[2])+'</small></div><button class="mini-btn" data-city-index="'+i+'">'+(S.restaurantLevel>=x[2]?"ENTRAR":"🔒")+"</button></div>").join("")+"</div>";
+  }else{
+    html="<h2>🏪 Restaurante</h2><p>Reputación ⭐ "+S.reputation+"% · Nivel "+S.restaurantLevel+" · Expansión "+S.expansion+"</p><div class='list'>"+
+      "<div class='list-row'><div class='main'><b>Pedidos completados</b><small>"+S.totalOrders+"</small></div></div>"+
+      "<div class='list-row'><div class='main'><b>Marketing</b><small>Mejora la llegada de clientes.</small></div><button class='mini-btn green' data-marketing='1'>$500</button></div>"+
+      "<div class='list-row'><div class='main'><b>Expandir restaurante</b><small>Más espacio y +2 clientes simultáneos · $"+(2500*((S.expansion||0)+1)).toLocaleString()+"</small></div><button class='mini-btn green' data-expansion='1'>EXPANDIR</button></div>"+
+      "<div class='list-row'><div class='main'><b>Guardar</b><small>Guardado automático en este dispositivo.</small></div></div>"+
+      "<div class='list-row'><div class='main'><b>Reiniciar</b><small>Borra todo el progreso.</small></div><button class='mini-btn' data-reset='1'>RESET</button></div></div>";
+  }
+  $("modalContent").innerHTML=html;
+  $("modalContent").querySelectorAll("[data-emp]").forEach(b=>b.onclick=()=>{upgradeEmployee(b.dataset.emp);modal("employees")});
+  $("modalContent").querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>buyIngredient(b.dataset.buy));
+  $("modalContent").querySelector("[data-expansion]")?.addEventListener("click",()=>expandRestaurant());
+  $("modalContent").querySelectorAll("[data-city-index]").forEach(b=>b.onclick=()=>travelCity(+b.dataset.cityIndex));
+  $("modalContent").querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{const id=b.dataset.st,s=STATIONS.find(x=>x[0]===id),lv=stationLevel(id),price=lv?Math.round(s[4]*(lv+1)):s[4];if(S.cash<price)return toast("Necesitas $"+price);if(!lv&&S.level<s[3])return toast("🔒 Necesitas nivel "+s[3]);S.cash-=price;S.stations[id]=(lv||0)+1;toast("🔧 "+s[2]+" mejorada");update();modal("upgrades")});
+  $("modalContent").querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>{const id=b.dataset.rec;if(!unlocked(id))return toast("🔒 Primero desbloquea la estación");const lv=S.recipeLevels[id]||1,cost=500*lv;if(S.cash<cost)return toast("Necesitas $"+cost);S.cash-=cost;S.recipeLevels[id]=lv+1;toast("📖 Receta mejorada");update();modal("recipes")});
+  $("modalContent").querySelectorAll("[data-contract-index]").forEach(b=>b.onclick=()=>{if(S.activeContract)return toast("Ya tienes un contrato activo");const contracts=[{name:"🎂 Cumpleaños",req:{burger:20},reward:2500,time:600,restaurant:1},{name:"🏢 Corporativo",req:{burger:30,fries:30},reward:8500,time:900,restaurant:3},{name:"👽 Galáctico",req:{burger:500,soda:500,fries:300},reward:125000,time:1800,restaurant:8}];const x=contracts[+b.dataset.contractIndex];if(!x)return;if(S.restaurantLevel<x.restaurant)return toast("🔒 Restaurante nivel "+x.restaurant);S.activeContract={name:x.name,requirements:x.req,done:Object.fromEntries(Object.keys(x.req).map(id=>[id,0])),reward:x.reward,left:x.time};save();toast("📋 Contrato aceptado");update();modal("contracts")});
+  $("modalContent").querySelector("[data-marketing]")?.addEventListener("click",()=>{if(S.cash<500)return toast("Necesitas $500");S.cash-=500;S.marketing++;toast("📣 Marketing activo");update();modal("restaurant")});
+  $("modalContent").querySelector("[data-reset]")?.addEventListener("click",()=>{if(confirm("¿Borrar toda la partida?")){localStorage.removeItem(KEY);location.reload()}});
 }
-else if(kind==="contracts"){const a=S.activeContract;const contracts=[{name:"🎂 Cumpleaños",req:{burger:20},reward:2500,time:600,restaurant:1},{name:"🏢 Corporativo",req:{burger:30,fries:30},reward:8500,time:900,restaurant:3},{name:"👽 Galáctico",req:{burger:500,soda:500,fries:300},reward:125000,time:1800,restaurant:8}];const contractText=x=>Object.entries(x.req).map(([id,n])=>n+" "+RECIPES[id].name).join(" + ");const progress=x=>Object.entries(x.req).reduce((sum,[id,n])=>sum+Math.min(n,x.done?.[id]||0),0),needTotal=x=>Object.values(x.req).reduce((a,b)=>a+b,0);html="<h2>📋 Contratos</h2><p>Produce platos específicos dentro del límite de tiempo.</p>"+(a?'<div class="contract active"><b>📦 '+a.name+'</b><small>Progreso '+progress(a)+"/"+needTotal(a)+" · "+Math.ceil(a.left/60)+" min</small><p>"+Object.entries(a.requirements||{}).map(([id,n])=>RECIPES[id].icon+" "+RECIPES[id].name+": "+(a.done?.[id]||0)+"/"+n).join(" · ")+"</p><div class='progress'><span style='width:"+(progress(a)/needTotal(a)*100)+"%'></span></div></div>":"<div class='list'>"+contracts.map((x,i)=>'<div class="list-row"><div class="main"><b>'+x.name+'</b><small>'+contractText(x)+" · "+Math.ceil(x.time/60)+" min · Restaurante "+x.restaurant+'</small></div><button class="mini-btn green" data-contract-index="'+i+'">ACEPTAR</button></div>').join("")+"</div>")}
-else if(kind==="achievements"){const entries=Object.entries(WC.achievements);html="<h2>🏆 Logros</h2><p>"+entries.filter(([id])=>S.achievements?.[id]).length+"/"+entries.length+" desbloqueados.</p><div class='list'>"+entries.map(([id,[name]])=>'<div class="list-row '+(S.achievements?.[id]?"":"locked")+'"><div class="main"><b>'+name+'</b><small>'+(S.achievements?.[id]?"Desbloqueado":"Bloqueado")+"</small></div><span>"+(S.achievements?.[id]?"🏆":"🔒")+"</span></div>").join("")+"</div>";}
-else if(kind==="world")html="<h2>🌎 Mundo</h2><p>Viaja cuando tu restaurante alcance el nivel requerido.</p><div class='list'>"+[["🇺🇸 Nueva York","newyork",1],["🇯🇵 Tokio","tokyo",10],["🇫🇷 París","paris",20],["🇨🇳 China","china",30],["🇦🇷 Argentina","argentina",40]].map((x,i)=>'<div class="list-row '+(S.restaurantLevel>=x[2]?"":"locked")+'"><div class="main"><b>'+x[0]+'</b><small>'+(S.restaurantLevel>=x[2]?"Disponible":"Restaurante nivel "+x[2])+"</small></div><button class=\"mini-btn\" data-city-index=\""+i+"\">"+(S.restaurantLevel>=x[2]?"ENTRAR":"🔒")+"</button></div>").join("")+"</div>";else html="<h2>🏪 Restaurante</h2><p>Reputación ⭐ "+S.reputation+"% · Nivel "+S.restaurantLevel+" · Expansión "+S.expansion+"</p><div class='list'><div class='list-row'><div class='main'><b>Pedidos completados</b><small>"+S.totalOrders+"</small></div></div><div class='list-row'><div class='main'><b>Marketing</b><small>Mejora la llegada de clientes.</small></div><button class='mini-btn green' data-marketing='1'>$500</button></div><div class='list-row'><div class='main'><b>Expandir restaurante</b><small>Más espacio y +2 clientes simultáneos · $"+(2500*((S.expansion||0)+1)).toLocaleString()+"</small></div><button class='mini-btn green' data-expansion='1'>EXPANDIR</button></div><div class='list-row'><div class='main'><b>Guardar</b><small>Guardado automático en este dispositivo.</small></div></div><div class='list-row'><div class='main'><b>Reiniciar</b><small>Borra todo el progreso.</small></div><button class='mini-btn' data-reset='1'>RESET</button></div></div>";
-$("modalContent").innerHTML=html;
-$("modalContent").querySelectorAll("[data-emp]").forEach(b=>b.onclick=()=>{upgradeEmployee(b.dataset.emp);modal("employees")});
-$("modalContent").querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>buyIngredient(b.dataset.buy));
-$("modalContent").querySelector("[data-expansion]")?.addEventListener("click",()=>expandRestaurant());
-$("modalContent").querySelectorAll("[data-city-index]").forEach(b=>b.onclick=()=>travelCity(+b.dataset.cityIndex));
-$("modalContent").querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{const id=b.dataset.st,s=STATIONS.find(x=>x[0]===id),lv=stationLevel(id),price=lv?Math.round(s[4]*(lv+1)):s[4];if(S.cash<price)return toast("Necesitas $"+price);if(!lv&&S.level<s[3])return toast("🔒 Necesitas nivel "+s[3]);S.cash-=price;S.stations[id]=(lv||0)+1;toast("🔧 "+s[2]+" mejorada");update();modal("upgrades")});
-$("modalContent").querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>{const id=b.dataset.rec;if(!unlocked(id))return toast("🔒 Primero desbloquea la estación");const lv=S.recipeLevels[id]||1,cost=500*lv;if(S.cash<cost)return toast("Necesitas $"+cost);S.cash-=cost;S.recipeLevels[id]=lv+1;toast("📖 Receta mejorada");update();modal("recipes")});
-$("modalContent").querySelectorAll("[data-contract-index]").forEach(b=>b.onclick=()=>{if(S.activeContract)return toast("Ya tienes un contrato activo");const contracts=[{name:"🎂 Cumpleaños",req:{burger:20},reward:2500,time:600,restaurant:1},{name:"🏢 Corporativo",req:{burger:30,fries:30},reward:8500,time:900,restaurant:3},{name:"👽 Galáctico",req:{burger:500,soda:500,fries:300},reward:125000,time:1800,restaurant:8}];const x=contracts[+b.dataset.contractIndex];if(!x)return;if(S.restaurantLevel<x.restaurant)return toast("🔒 Restaurante nivel "+x.restaurant);S.activeContract={name:x.name,requirements:x.req,done:Object.fromEntries(Object.keys(x.req).map(id=>[id,0])),reward:x.reward,left:x.time};save();toast("📋 Contrato aceptado");update();modal("contracts")});
-$("modalContent").querySelector("[data-marketing]")?.addEventListener("click",()=>{if(S.cash<500)return toast("Necesitas $500");S.cash-=500;S.marketing++;toast("📣 Marketing activo");update();modal("restaurant")});
-$("modalContent").querySelector("[data-reset]")?.addEventListener("click",()=>{if(confirm("¿Borrar toda la partida?")){localStorage.removeItem(KEY);location.reload()}});
-}
-$("achievementsBtn")?.addEventListener("click",()=>modal("achievements"));
 $("closeModal").onclick=()=>$("modal").classList.add("hidden");$("inventoryBtn").onclick=()=>modal("inventory");$("contractsBtn").onclick=()=>modal("contracts");$("employeesBtn")?.addEventListener("click",()=>modal("employees"));$("upgradesBtn").onclick=()=>modal("upgrades");$("recipesBtn").onclick=()=>modal("recipes");$("worldBtn").onclick=()=>modal("world");$("restaurantBtn").onclick=()=>modal("restaurant");$("cookBtn").onclick=cook;$("serveBtn")?.addEventListener("click",serveSelected);
 function hireEmployee(role){
   S.employees=S.employees||{};
