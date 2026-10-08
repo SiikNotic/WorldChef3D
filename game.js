@@ -16,13 +16,14 @@ function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null"),d=fres
 let S=load(), cooking=false;
 // --- LIVE EVENTS ---
 const EVENTS=[
- {id:"halloween",name:"🎃 Noche de Halloween",duration:900,bonus:1.5,orders:1.35,desc:"Clientes disfrazados pagan 50% más."},
- {id:"sports",name:"🏆 Final del Campeonato",duration:1200,bonus:1.8,orders:1.5,desc:"La ciudad se llena de fanáticos."},
- {id:"alien",name:"👽 Visita Galáctica",duration:1800,bonus:2.2,orders:1.2,desc:"Los visitantes cósmicos pagan una fortuna."}
+ {id:"starter",name:"🍔 Hora Pico",duration:600,bonus:1.2,orders:1.2,req:1,desc:"Más clientes y 20% más ingresos."},
+ {id:"halloween",name:"🎃 Noche de Halloween",duration:900,bonus:1.5,orders:1.35,req:5,desc:"Clientes disfrazados pagan 50% más."},
+ {id:"sports",name:"🏆 Final del Campeonato",duration:1200,bonus:1.8,orders:1.5,req:15,desc:"La ciudad se llena de fanáticos."},
+ {id:"alien",name:"👽 Visita Galáctica",duration:1800,bonus:2.2,orders:1.2,req:25,desc:"Los visitantes cósmicos pagan una fortuna."}
 ];
 function eventState(){return S.activeEvent||null}
 function startEvent(id){
- const e=EVENTS.find(x=>x.id===id); if(!e||S.activeEvent)return;
+ const e=EVENTS.find(x=>x.id===id); if(!e||S.activeEvent)return;if(S.restaurantLevel<e.req)return toast("🔒 Restaurante nivel "+e.req);
  S.activeEvent={id:e.id,left:e.duration};
  save(); toast(e.name+" comenzó");
 }
@@ -270,7 +271,7 @@ function modal(kind){
   $("modalContent").querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{const id=b.dataset.st,s=STATIONS.find(x=>x[0]===id),lv=stationLevel(id),price=lv?Math.round(s[4]*(lv+1)):s[4];if(S.cash<price)return toast("Necesitas $"+price);if(!lv&&S.level<s[3])return toast("🔒 Necesitas nivel "+s[3]);S.cash-=price;S.stations[id]=(lv||0)+1;toast("🔧 "+s[2]+" mejorada");update();modal("upgrades")});
   $("modalContent").querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>{const id=b.dataset.rec;if(!unlocked(id))return toast("🔒 Primero desbloquea la estación");const lv=S.recipeLevels[id]||1,cost=500*lv;if(S.cash<cost)return toast("Necesitas $"+cost);S.cash-=cost;S.recipeLevels[id]=lv+1;toast("📖 Receta mejorada");update();modal("recipes")});
   $("modalContent").querySelectorAll("[data-event]").forEach(b=>b.onclick=()=>{startEvent(b.dataset.event);modal("events")});
-  $("modalContent").querySelectorAll("[data-contract-index]").forEach(b=>b.onclick=()=>{if(S.activeContract)return toast("Ya tienes un contrato activo");const contracts=[{name:"🎂 Cumpleaños",req:{burger:20},reward:2500,time:600,restaurant:1},{name:"🏢 Corporativo",req:{burger:30,fries:30},reward:8500,time:900,restaurant:3},{name:"👽 Galáctico",req:{burger:500,soda:500,fries:300},reward:125000,time:1800,restaurant:8}];const x=contracts[+b.dataset.contractIndex];if(!x)return;if(S.restaurantLevel<x.restaurant)return toast("🔒 Restaurante nivel "+x.restaurant);S.activeContract={name:x.name,requirements:x.req,done:Object.fromEntries(Object.keys(x.req).map(id=>[id,0])),reward:x.reward,left:x.time};save();toast("📋 Contrato aceptado");update();modal("contracts")});
+  $("modalContent").querySelectorAll("[data-contract-index]").forEach(b=>b.onclick=()=>{if(S.activeContract)return toast("Ya tienes un contrato activo");const contracts=[{name:"🎂 Cumpleaños",req:{burger:20},reward:2500,time:600,restaurant:1},{name:"🏢 Corporativo",req:{burger:30,fries:30},reward:8500,time:900,restaurant:3},{name:"👽 Galáctico",req:{burger:500,soda:500,fries:300},reward:125000,time:1800,restaurant:8}];const x=contracts[+b.dataset.contractIndex];if(!x)return;if(S.restaurantLevel<x.restaurant)return toast("🔒 Restaurante nivel "+x.restaurant);if(contractCapacityWarning(x))return toast("⚠️ Capacidad actual insuficiente para este contrato");S.activeContract={name:x.name,requirements:x.req,done:Object.fromEntries(Object.keys(x.req).map(id=>[id,0])),reward:x.reward,left:x.time};save();toast("📋 Contrato aceptado");update();modal("contracts")});
   $("modalContent").querySelector("[data-marketing]")?.addEventListener("click",()=>{if(S.cash<500)return toast("Necesitas $500");S.cash-=500;S.marketing++;toast("📣 Marketing activo");update();modal("restaurant")});
   $("modalContent").querySelector("[data-reset]")?.addEventListener("click",()=>{if(confirm("¿Borrar toda la partida?")){localStorage.removeItem(KEY);location.reload()}});
 }
@@ -290,6 +291,12 @@ function upgradeEmployee(role){
   const cost=1000*e.level;
   if(S.cash<cost) return toast("Necesitas $"+cost);
   S.cash-=cost; e.level++; save(); toast("⭐ Empleado mejorado");
+}
+function contractCapacityWarning(x){
+ const loads={};
+ for(const [id,n] of Object.entries(x.req||{})){const r=RECIPES[id];loads[r.station]=(loads[r.station]||0)+n*r.time}
+ const bottleneck=Math.max(0,...Object.entries(loads).map(([station,seconds])=>seconds/Math.max(1,stationCapacity(station))));
+ return bottleneck>x.time;
 }
 function contractTick(dt){const a=S.activeContract;if(!a)return;a.left-=dt;const complete=a.requirements?Object.entries(a.requirements).every(([id,n])=>(a.done?.[id]||0)>=n):a.done>=a.need;if(complete){S.cash+=a.reward;S.completedContracts++;gainXP(Math.round(a.reward/80));toast("🏆 Contrato completado +$"+a.reward);S.activeContract=null;save();return}if(a.left<=0){S.reputation=Math.max(0,S.reputation-10);toast("❌ Contrato fallido · reputación -10");S.activeContract=null;save()}}
 function loop(now){eventTick((now-(loop.last||now))/1000);if(!loop.last)loop.last=now;const dt=(now-loop.last)/1000;loop.last=now;S.orders.forEach(o=>o.left-=dt);const expired=S.orders.filter(o=>o.left<=0);if(expired.length){const cleanerLevel=S.employees?.cleaner?.level||0;const reputationLoss=Math.max(1,3-cleanerLevel);const totalLoss=expired.reduce((sum,o)=>sum+(o.special==="critic"?5:reputationLoss),0);S.reputation=Math.max(0,S.reputation-totalLoss);S.orders=S.orders.filter(o=>o.left>0);if(!S.selectedOrder||!S.orders.some(o=>o.id===S.selectedOrder))S.selectedOrder=S.orders[0]?.id||null;expired.forEach((_,i)=>setTimeout(addOrder,700+i*300));toast("😠 Cliente se fue · reputación -"+totalLoss);syncCustomers()}contractTick(dt);update();renderer.render(scene,camera);customerMeshes.forEach(g=>{g.position.y=g.userData.baseY+Math.sin(now*.002+g.userData.phase)*.025});if(now-(loop.lastRender||0)>250){loop.lastRender=now;renderOrders()}requestAnimationFrame(loop)}
