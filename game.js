@@ -120,6 +120,14 @@ function modal(kind){
     html="<h2>👥 Personal</h2><p>Contrata empleados para preparar y atender más rápido.</p><div class='list'>"+[
       ["cook","👨‍🍳 Cocinero",1500],["waiter","🧑‍🍳 Mesero",1800],["cleaner","🧹 Limpieza",1200]
     ].map(e=>{const cur=S.employees?.[e[0]],cost=cur?1000*cur.level:e[2];return '<div class="list-row"><div class="main"><b>'+e[1]+'</b><small>'+(cur?"Nivel "+cur.level:"Sin contratar")+'</small></div><button class="mini-btn green" data-emp="'+e[0]+'">'+(cur?"MEJORAR $"+cost:"CONTRATAR $"+cost)+'</button></div>'}).join("")+"</div>";
+  }else if(kind==="events"){
+    const active=eventData();
+    html="<h2>⚡ Eventos</h2><p>Eventos temporales cambian el ritmo del restaurante y ofrecen recompensas especiales.</p>";
+    if(active){
+      html+="<div class='contract active'><b>"+active.name+"</b><small>"+active.desc+" · "+Math.ceil(S.activeEvent.left/60)+" min restantes</small><div class='progress'><span style='width:"+Math.max(0,S.activeEvent.left/active.duration*100)+"%'></span></div></div>";
+    }else{
+      html+="<div class='list'>"+EVENTS.map((e,i)=>'<div class="list-row"><div class="main"><b>'+e.name+'</b><small>'+e.desc+" · "+Math.ceil(e.duration/60)+" min</small></div><button class="mini-btn green" data-event='"+e.id+"'>INICIAR</button></div>").join("")+"</div>";
+    }
   }else if(kind==="contracts"){
     const a=S.activeContract;
     const contracts=[
@@ -158,6 +166,7 @@ function modal(kind){
   $("modalContent").querySelectorAll("[data-city-index]").forEach(b=>b.onclick=()=>travelCity(+b.dataset.cityIndex));
   $("modalContent").querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{const id=b.dataset.st,s=STATIONS.find(x=>x[0]===id),lv=stationLevel(id),price=lv?Math.round(s[4]*(lv+1)):s[4];if(S.cash<price)return toast("Necesitas $"+price);if(!lv&&S.level<s[3])return toast("🔒 Necesitas nivel "+s[3]);S.cash-=price;S.stations[id]=(lv||0)+1;toast("🔧 "+s[2]+" mejorada");update();modal("upgrades")});
   $("modalContent").querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>{const id=b.dataset.rec;if(!unlocked(id))return toast("🔒 Primero desbloquea la estación");const lv=S.recipeLevels[id]||1,cost=500*lv;if(S.cash<cost)return toast("Necesitas $"+cost);S.cash-=cost;S.recipeLevels[id]=lv+1;toast("📖 Receta mejorada");update();modal("recipes")});
+  $("modalContent").querySelectorAll("[data-event]").forEach(b=>b.onclick=()=>{startEvent(b.dataset.event);modal("events")});
   $("modalContent").querySelectorAll("[data-contract-index]").forEach(b=>b.onclick=()=>{if(S.activeContract)return toast("Ya tienes un contrato activo");const contracts=[{name:"🎂 Cumpleaños",req:{burger:20},reward:2500,time:600,restaurant:1},{name:"🏢 Corporativo",req:{burger:30,fries:30},reward:8500,time:900,restaurant:3},{name:"👽 Galáctico",req:{burger:500,soda:500,fries:300},reward:125000,time:1800,restaurant:8}];const x=contracts[+b.dataset.contractIndex];if(!x)return;if(S.restaurantLevel<x.restaurant)return toast("🔒 Restaurante nivel "+x.restaurant);S.activeContract={name:x.name,requirements:x.req,done:Object.fromEntries(Object.keys(x.req).map(id=>[id,0])),reward:x.reward,left:x.time};save();toast("📋 Contrato aceptado");update();modal("contracts")});
   $("modalContent").querySelector("[data-marketing]")?.addEventListener("click",()=>{if(S.cash<500)return toast("Necesitas $500");S.cash-=500;S.marketing++;toast("📣 Marketing activo");update();modal("restaurant")});
   $("modalContent").querySelector("[data-reset]")?.addEventListener("click",()=>{if(confirm("¿Borrar toda la partida?")){localStorage.removeItem(KEY);location.reload()}});
@@ -236,5 +245,6 @@ setInterval(save,5000);
 applyOfflineProgress();
 setTimeout(showTutorial,500);
 
+$("eventBtn").onclick=()=>modal("events");
 addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 if(!S.orders.length){addOrder();setTimeout(addOrder,2500);setTimeout(addOrder,5000)}else{S.selectedOrder=S.orders.some(o=>o.id===S.selectedOrder)?S.selectedOrder:S.orders[0].id;renderOrders();syncCustomers()}update();requestAnimationFrame(loop);
