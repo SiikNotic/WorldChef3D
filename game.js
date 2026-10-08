@@ -34,7 +34,7 @@ function eventTick(dt){
 function eventData(){const a=eventState();return a?EVENTS.find(x=>x.id===a.id)||null:null}
 
 function save(){localStorage.setItem(KEY,JSON.stringify(S))}
-const scene=new THREE.Scene();const cityTheme={newyork:0x9eb7c4,tokyo:0x687b91,paris:0xb9a58f,china:0xc98f72,argentina:0x86a9b8};const initialCityColor=cityTheme[S.city]||cityTheme.newyork;scene.background=new THREE.Color(initialCityColor);scene.fog=new THREE.Fog(initialCityColor,13,30);
+rebuildStaff();\nconst scene=new THREE.Scene();const cityTheme={newyork:0x9eb7c4,tokyo:0x687b91,paris:0xb9a58f,china:0xc98f72,argentina:0x86a9b8};const initialCityColor=cityTheme[S.city]||cityTheme.newyork;scene.background=new THREE.Color(initialCityColor);scene.fog=new THREE.Fog(initialCityColor,13,30);
 const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,100);camera.position.set(8,8,10);
 const renderer=new THREE.WebGLRenderer({canvas:$("game"),antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;
 const controls=new OrbitControls(camera,renderer.domElement);controls.enablePan=false;controls.minDistance=8;controls.maxDistance=16;controls.minPolarAngle=.7;controls.maxPolarAngle=1.25;controls.target.set(0,1,0);
@@ -72,6 +72,22 @@ function buildStations(){
 }
 buildStations();
 const customerGroup=new THREE.Group(); scene.add(customerGroup);
+
+// --- 3D STAFF ---
+const staffGroup=new THREE.Group(); scene.add(staffGroup);
+const staffMeshes=[];
+function rebuildStaff(){
+ staffMeshes.forEach(m=>staffGroup.remove(m)); staffMeshes.length=0;
+ const types=Object.keys(S.employees||{}), colors={cook:0xf97316,waiter:0x22c55e,cleaner:0x38bdf8};
+ types.forEach((type,i)=>{
+  const e=S.employees[type],g=new THREE.Group();g.position.set(-2.8+i*2.8,.05,1.8);
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.28,.34,.65,12),new THREE.MeshStandardMaterial({color:colors[type]||0xffffff}));
+  body.position.y=.55;body.castShadow=true;g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.23,12,10),new THREE.MeshStandardMaterial({color:0xd49b78}));
+  head.position.y=1.02;head.castShadow=true;g.add(head);
+  g.userData.type=type;g.userData.phase=i*.9;g.userData.level=e.level||1;staffGroup.add(g);staffMeshes.push(g);
+ });
+}
 const customerMeshes=[];
 function createCustomer(o,index){
   const g=new THREE.Group(), x=-4.8+(index%4)*3.2, z=2.2-Math.floor(index/4)*1.7;
@@ -110,6 +126,14 @@ function addOrder(){
 }
 function renderOrders(){$("orders").innerHTML=S.orders.map(o=>{const r=RECIPES[o.recipe],items=o.items||[o.recipe],p=Math.max(0,o.left/o.time);return '<button class="order '+(o.vip?"vip ":"")+(o.id===S.selectedOrder?"selected":"")+'" data-order="'+o.id+'"><div class="order-head"><span>'+(o.special==="celebrity"?"🌟 Celebridad":o.special==="royal"?"👑 Realeza":o.special==="critic"?"🧐 Crítico":o.vip?"💎 VIP":"🧑 Cliente")+'</span><span>'+r.icon+" "+r.name+'</span></div><div class="order-items">'+items.map(x=>RECIPES[x].icon+" "+RECIPES[x].name).join(" + ")+'</div><div class="timer"><span style="transform:scaleX('+p+')"></span></div><div class="order-reward"><span>'+(o.vip?"2× ":"")+"🪙 $"+o.reward+'</span><span>'+Math.ceil(o.left)+"s</span></div></button>"}).join("");$("orders").querySelectorAll("[data-order]").forEach(b=>b.onclick=()=>{S.selectedOrder=b.dataset.order;renderOrders();update()})}
 function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),1900)}
+function animateStaff(now){
+ staffMeshes.forEach((g,i)=>{
+  const phase=now*.001+g.userData.phase;
+  g.position.x+=Math.sin(phase)*.0008;
+  g.position.z+=Math.cos(phase*.7)*.0005;
+  g.rotation.y=Math.sin(phase)*.12;
+ });
+}
 function update(){const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0],id=o?.recipe||Object.keys(RECIPES).find(unlocked)||"burger",r=RECIPES[id],lv=stationLevel(r.station);$("level").textContent=S.level;$("cash").textContent="$"+S.cash.toLocaleString();$("gems").textContent=S.gems;$("rep").textContent=S.reputation+"%";$("xpBar").style.width=Math.min(100,S.xp/S.xpGoal*100)+"%";$("xpText").textContent=S.xp+" / "+S.xpGoal+" XP";$("stationName").textContent=STATIONS.find(x=>x[0]===r.station)?.[2]||"Parrilla";$("stationInfo").textContent="Nivel "+lv+" · "+r.time+"s";$("cookBtn").innerHTML="COCINAR "+r.icon+" "+r.name.toUpperCase()+" <span>"+r.time+"s</span>";$("ingredients").innerHTML=Object.entries(r.req).map(([k,v])=>'<div class="ingredient">'+k+'<small>'+v+" · "+(S.inv[k]||0)+" disponibles</small></div>").join("");$("restaurantLevel").textContent=S.restaurantLevel;$("preparedCount")&&($("preparedCount").textContent=S.prepared.length)}
 function gainXP(n){S.xp+=n;while(S.xp>=S.xpGoal){S.xp-=S.xpGoal;S.level++;S.xpGoal=Math.floor(S.xpGoal*1.5);toast("⭐ Nivel "+S.level+" desbloqueado")}checkRestaurant()}
 function checkRestaurant(){const next=S.restaurantLevel+1;if(next>20)return;const orderNeed=next===2?10:next===3?35:next===4?75:next===5?150:150+(next-5)*75;const cashNeed=next===2?1000:next===3?1500:next===4?4000:next===5?8000:8000+(next-5)*5000;const repNeed=next===2?85:next===3?90:next===4?95:90;const stationNeed=next>=3?2:1;const recipeNeed=next>=5?3:next>=4?2:0;const recipeLevelNeed=next>=5?3:next>=4?2:1;const mastered=Object.values(S.recipeLevels||{}).filter(l=>l>=recipeLevelNeed).length;if(S.totalOrders>=orderNeed&&S.cash>=cashNeed&&S.reputation>=repNeed&&(S.stations.grill||0)>=stationNeed&&mastered>=recipeNeed){S.cash-=cashNeed;S.restaurantLevel=next;toast("🏪 Restaurante nivel "+next+" desbloqueado");save()}}
