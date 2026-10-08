@@ -227,7 +227,7 @@ function modal(kind){
     if(active){
       html+="<div class='contract active'><b>"+active.name+"</b><small>"+active.desc+" · "+Math.ceil(S.activeEvent.left/60)+" min restantes</small><div class='progress'><span style='width:"+Math.max(0,S.activeEvent.left/active.duration*100)+"%'></span></div></div>";
     }else{
-      html+="<div class='list'>"+EVENTS.map((e,i)=>'<div class="list-row"><div class="main"><b>'+e.name+'</b><small>'+e.desc+" · "+Math.ceil(e.duration/60)+" min</small></div><button class="mini-btn green" data-event='+e.id+'">INICIAR</button></div>").join("")+"</div>";
+      html+="<div class='list'>"+EVENTS.map((e,i)=>'<div class="list-row"><div class="main"><b>'+e.name+'</b><small>'+e.desc+" · "+Math.ceil(e.duration/60)+" min</small></div><button class="mini-btn green" data-event='+e.id+'>INICIAR</button></div>").join("")+"</div>";
     }
   }else if(kind==="contracts"){
     const a=S.activeContract;
