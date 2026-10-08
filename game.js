@@ -261,7 +261,9 @@ function modal(kind){
       "<div class='list-row'><div class='main'><b>Reiniciar</b><small>Borra todo el progreso.</small></div><button class='mini-btn' data-reset='1'>RESET</button></div></div>";
   }
   $("modalContent").innerHTML=html;
-  $("modalContent").querySelector("#soundToggle")?.addEventListener("click",toggleSound);\n    $("modalContent").querySelector("#musicToggle")?.addEventListener("click",toggleMusic);\n  $("modalContent").querySelectorAll("[data-emp]").forEach(b=>b.onclick=()=>{upgradeEmployee(b.dataset.emp);modal("employees")});
+  $("modalContent").querySelector("#soundToggle")?.addEventListener("click",toggleSound);
+    $("modalContent").querySelector("#musicToggle")?.addEventListener("click",toggleMusic);
+  $("modalContent").querySelectorAll("[data-emp]").forEach(b=>b.onclick=()=>{upgradeEmployee(b.dataset.emp);modal("employees")});
   $("modalContent").querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>buyIngredient(b.dataset.buy));
   $("modalContent").querySelector("[data-expansion]")?.addEventListener("click",()=>expandRestaurant());
   $("modalContent").querySelectorAll("[data-city-index]").forEach(b=>b.onclick=()=>travelCity(+b.dataset.cityIndex));
