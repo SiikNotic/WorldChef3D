@@ -11,15 +11,15 @@ const RECIPES={
 };
 const STATIONS=[["grill","🔥","Parrilla",1,350],["fryer","🍟","Freidora",2,600],["oven","🍕","Horno",3,1000],["prep","🔪","Preparación",5,1800],["drinks","🥤","Bebidas",2,750],["fridge","🧊","Nevera",1,900],["dish","🧼","Lavaplatos",2,1100]];
 const INITIAL_INV={bread:20,meat:20,cheese:20,lettuce:20,tomato:20,potato:30,dough:10,pepperoni:10,rice:20,fish:10,seaweed:10,syrup:20};
-function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,totalEarnings:0,vipServed:0,specialServed:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,selectedStationRecipe:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{},settings:{sound:true,music:true,language:"es"},expansion:0,city:"newyork",activeEvent:null,activeStation:null}}
+function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,totalEarnings:0,vipServed:0,specialServed:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,selectedStationRecipe:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{},settings:{sound:true,music:true,language:"es"},expansion:0,city:"newyork",activeEvent:null,activeStation:null,eventWins:0,eventDecor:[]}}
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null"),d=fresh();if(!x)return d;Object.assign(d,x,{employees:{...d.employees,...(x.employees||{})},recipeLevels:{...d.recipeLevels,...(x.recipeLevels||{})},stations:{...d.stations,...(x.stations||{})},inv:{...d.inv,...(x.inv||{})}});d.orders=Array.isArray(x.orders)?x.orders:[];d.prepared=Array.isArray(x.prepared)?x.prepared:[];return d}catch{return fresh()}}
 let S=load(), cooking=false;
 // --- LIVE EVENTS ---
 const EVENTS=[
- {id:"starter",name:"🍔 Hora Pico",duration:600,bonus:1.2,orders:1.2,req:1,desc:"Más clientes y 20% más ingresos."},
- {id:"halloween",name:"🎃 Noche de Halloween",duration:900,bonus:1.5,orders:1.35,req:5,desc:"Clientes disfrazados pagan 50% más."},
- {id:"sports",name:"🏆 Final del Campeonato",duration:1200,bonus:1.8,orders:1.5,req:15,desc:"La ciudad se llena de fanáticos."},
- {id:"alien",name:"👽 Visita Galáctica",duration:1800,bonus:2.2,orders:1.2,req:25,desc:"Los visitantes cósmicos pagan una fortuna."}
+ {id:"starter",name:"🍔 Hora Pico",duration:600,bonus:1.2,orders:1.2,req:1,reward:500,desc:"Más clientes y 20% más ingresos."},
+ {id:"halloween",name:"🎃 Noche de Halloween",duration:900,bonus:1.5,orders:1.35,req:5,reward:1500,gems:5,desc:"Clientes disfrazados pagan 50% más."},
+ {id:"sports",name:"🏆 Final del Campeonato",duration:1200,bonus:1.8,orders:1.5,req:15,reward:5000,gems:2,desc:"La ciudad se llena de fanáticos."},
+ {id:"alien",name:"👽 Visita Galáctica",duration:1800,bonus:2.2,orders:1.2,req:25,reward:12500,gems:10,desc:"Los visitantes cósmicos pagan una fortuna."}
 ];
 function eventState(){return S.activeEvent||null}
 function startEvent(id){
@@ -30,7 +30,7 @@ function startEvent(id){
 function eventTick(dt){
  const a=eventState(); if(!a)return;
  a.left-=dt;
- if(a.left<=0){S.activeEvent=null;save();toast("✨ El evento terminó")}
+ if(a.left<=0){const e=eventData();if(e){S.cash+=(e.reward||0);S.gems+=(e.gems||0);S.eventWins=(S.eventWins||0)+1;S.eventDecor=S.eventDecor||[];if(!S.eventDecor.includes(e.id))S.eventDecor.push(e.id);toast("✨ "+e.name+" terminado · +$"+(e.reward||0)+(e.gems?" · +"+e.gems+" 💎":""))}S.activeEvent=null;save()}
 }
 function eventData(){const a=eventState();return a?EVENTS.find(x=>x.id===a.id)||null:null}
 
@@ -228,7 +228,7 @@ function modal(kind){
     const active=eventData();
     html="<h2>⚡ Eventos</h2><p>Eventos temporales cambian el ritmo del restaurante y ofrecen recompensas especiales.</p>";
     if(active){
-      html+="<div class='contract active'><b>"+active.name+"</b><small>"+active.desc+" · "+Math.ceil(S.activeEvent.left/60)+" min restantes</small><div class='progress'><span style='width:"+Math.max(0,S.activeEvent.left/active.duration*100)+"%'></span></div></div>";
+      html+="<div class='contract active'><b>"+active.name+"</b><small>"+active.desc+" · "+Math.ceil(S.activeEvent.left/60)+" min restantes · Premio $"+(active.reward||0)+(active.gems?" + "+active.gems+" 💎":"")+"</small><div class='progress'><span style='width:"+Math.max(0,S.activeEvent.left/active.duration*100)+"%'></span></div></div>";
     }else{
             html+="<div class='list'>"+EVENTS.map((e,i)=>{const ok=S.restaurantLevel>=e.req;return `<div class="list-row ${ok?"":"locked"}"><div class="main"><b>${e.name}</b><small>${e.desc} · ${Math.ceil(e.duration/60)} min · Restaurante ${e.req}</small></div><button class="mini-btn green" data-event="${e.id}" ${ok?"":"disabled"}>${ok?"INICIAR":"🔒"}</button></div>`}).join("")+"</div>";
     }
