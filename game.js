@@ -1,16 +1,5 @@
-let THREE, OrbitControls;
-try{
-  THREE=await import("https://cdn.jsdelivr.net/npm/three@0.181.2/build/three.module.js");
-  OrbitControls=(await import("https://cdn.jsdelivr.net/npm/three@0.181.2/examples/jsm/controls/OrbitControls.js")).OrbitControls;
-}catch(primaryError){
-  try{
-    THREE=await import("https://unpkg.com/three@0.181.2/build/three.module.js");
-    OrbitControls=(await import("https://unpkg.com/three@0.181.2/examples/jsm/controls/OrbitControls.js")).OrbitControls;
-  }catch(fallbackError){
-    document.body.insertAdjacentHTML("beforeend","<div style='position:fixed;inset:0;z-index:100;background:#0e1116;color:#fff;display:grid;place-items:center;padding:24px;text-align:center;font:600 16px system-ui'>⚠️ No se pudo cargar el motor 3D. Comprueba tu conexión y vuelve a abrir el juego.</div>");
-    throw fallbackError;
-  }
-}
+import * as THREE from "./vendor/three.module.js";
+import { OrbitControls } from "./vendor/OrbitControls.js";
 
 const $=id=>document.getElementById(id), KEY="worldchef3d-save-v5";
 const RECIPES={
