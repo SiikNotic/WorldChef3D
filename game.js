@@ -92,6 +92,25 @@ function consume(id){Object.entries(RECIPES[id].req).forEach(([k,v])=>S.inv[k]-=
 
 // --- INTERACTIVE 3D STATIONS ---
 const stationGroup=new THREE.Group(); scene.add(stationGroup);
+const cityProps=new THREE.Group(); scene.add(cityProps);
+function clearCityProps(){while(cityProps.children.length)cityProps.remove(cityProps.children[0])}
+function buildCityProps(city){
+ clearCityProps();
+ const presets={
+  newyork:[["🏙️",0x334155],["🗽",0x64748b],["🚕",0xeab308]],
+  tokyo:[["🗼",0xef4444],["🏮",0xf97316],["🌸",0xf9a8d4]],
+  paris:[["🗼",0x78716c],["🥐",0xd97706],["🌳",0x16a34a]],
+  china:[["🏯",0x991b1b],["🐉",0xdc2626],["🏮",0xf59e0b]],
+  argentina:[["🏟️",0x2563eb],["🌳",0x16a34a],["☀️",0xfacc15]]
+ };
+ (presets[city]||presets.newyork).forEach((item,i)=>{
+  const g=new THREE.Group();g.position.set(-6+i*6,0,-5.2);
+  const h=1.2+(i%2)*.8;const base=box(1.5,h,1.2,item[1],0,h/2,0);g.add(base);
+  const roof=box(1.7,.18,1.4,0x20242b,0,h+.08,0);g.add(roof);g.userData.landmark=item[0];cityProps.add(g);
+ });
+}
+buildCityProps(S.city||"newyork");
+
 const stationMeshes=[];
 const stationPositions={
  grill:[-4,0,0], fryer:[-1.8,0,0], oven:[.4,0,0], prep:[3,0,0], drinks:[5.4,0,0], fridge:[-5,0,2.7], dish:[5,0,2.7]
@@ -260,7 +279,7 @@ function hireEmployee(role){
   if(S.cash<cost) return toast("Necesitas $"+cost);
   S.cash-=cost; S.employees[role]={level:1}; save(); toast("👥 Empleado contratado");
 }
-function travelCity(index){const cities=[["newyork","🇺🇸 Nueva York",1,0x9eb7c4],["tokyo","🇯🇵 Tokio",10,0x687b91],["paris","🇫🇷 París",20,0xb9a58f],["china","🇨🇳 China",30,0xc98f72],["argentina","🇦🇷 Argentina",40,0x86a9b8]];const city=cities[index];if(!city)return;if(S.restaurantLevel<city[2])return toast("🔒 Necesitas Restaurante nivel "+city[2]);S.city=city[0];scene.background=new THREE.Color(city[3]);scene.fog.color=new THREE.Color(city[3]);toast("🌎 "+city[1]);save();modal("world")}
+function travelCity(index){const cities=[["newyork","🇺🇸 Nueva York",1,0x9eb7c4],["tokyo","🇯🇵 Tokio",10,0x687b91],["paris","🇫🇷 París",20,0xb9a58f],["china","🇨🇳 China",30,0xc98f72],["argentina","🇦🇷 Argentina",40,0x86a9b8]];const city=cities[index];if(!city)return;if(S.restaurantLevel<city[2])return toast("🔒 Necesitas Restaurante nivel "+city[2]);S.city=city[0];scene.background=new THREE.Color(city[3]);scene.fog.color=new THREE.Color(city[3]);buildCityProps(S.city);toast("🌎 "+city[1]);save();modal("world")}
 function expandRestaurant(){const current=S.expansion||0;if(current>=4)return toast("🏪 Expansión máxima alcanzada");const cost=2500*(current+1);if(S.cash<cost)return toast("Necesitas $"+cost.toLocaleString());S.cash-=cost;S.expansion=current+1;save();toast("🏗️ Restaurante expandido");setTimeout(()=>location.reload(),500)}
 function upgradeEmployee(role){
   const e=S.employees?.[role];
