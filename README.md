@@ -41,4 +41,5 @@ For Android, open the GitHub Pages deployment in Chrome and use Add to Home scre
 - Frontend: HTML, CSS and JavaScript.
 - 3D engine: Three.js.
 - Persistence: browser localStorage.
-- Hosting target: GitHub Pages.\n- Automated deployment validates game.js syntax before publishing.
+- Hosting target: GitHub Pages.
+- Automated deployment validates game.js syntax before publishing.
