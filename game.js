@@ -9,7 +9,7 @@ const RECIPES={
  sushi:{name:"Sushi Deluxe",icon:"🍣",station:"prep",time:14,base:130,xp:28,req:{rice:2,fish:1,seaweed:1}},
  steak:{name:"Steak Premium",icon:"🥩",station:"grill",time:12,base:150,xp:30,req:{meat:2}}, soda:{name:"Soda",icon:"🥤",station:"drinks",time:2,base:18,xp:4,req:{syrup:1}}
 };
-const STATIONS=[["grill","🔥","Parrilla",1,350],["fryer","🍟","Freidora",2,600],["oven","🍕","Horno",3,1000],["prep","🔪","Preparación",5,1800],["drinks","🥤","Bebidas",2,750],["fridge","🧊","Nevera",1,900],["dish","🧼","Lavaplatos",2,1100]];
+const STATIONS=[["grill","🔥","Parrilla",1,350],["fryer","🍟","Freidora",2,600],["oven","🍕","Horno",3,1000],["prep","🔪","Preparación",5,1800],["drinks","🥤","Bebidas",2,750],["fridge","🧊","Nevera",1,900],["dish","🧼","Lavaplatos",2,1100],["warehouse","📦","Almacén",8,2500]];
 const INITIAL_INV={bread:20,meat:20,cheese:20,lettuce:20,tomato:20,potato:30,dough:10,pepperoni:10,rice:20,fish:10,seaweed:10,syrup:20};
 function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,totalEarnings:0,vipServed:0,specialServed:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,selectedStationRecipe:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{},settings:{sound:true,music:true,language:"es"},expansion:0,city:"newyork",activeEvent:null,activeStation:null,eventWins:0,eventDecor:[]}}
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null"),d=fresh();if(!x)return d;Object.assign(d,x,{employees:{...d.employees,...(x.employees||{})},recipeLevels:{...d.recipeLevels,...(x.recipeLevels||{})},stations:{...d.stations,...(x.stations||{})},inv:{...d.inv,...(x.inv||{})}});d.orders=Array.isArray(x.orders)?x.orders:[];d.prepared=Array.isArray(x.prepared)?x.prepared:[];return d}catch{return fresh()}}
@@ -83,7 +83,7 @@ function stationLevel(k){return S.stations[k]||0} function unlocked(id){return s
 function recipeValue(id){const r=RECIPES[id],lv=S.recipeLevels[id]||1;return Math.round(r.base*(1+(lv-1)*.2))}
 function inventoryCapacity(){
  const fridge=stationLevel("fridge");
- return 80+(fridge?fridge*40:0)+(S.expansion||0)*50;
+ const warehouse=stationLevel("warehouse");return 80+(fridge?fridge*40:0)+(warehouse?warehouse*80:0)+(S.expansion||0)*50;
 }
 function inventoryUsed(){return Object.values(S.inv||{}).reduce((a,b)=>a+(Number(b)||0),0)}
 function ok(id){return Object.entries(RECIPES[id].req).every(([k,v])=>(S.inv[k]||0)>=v)}
@@ -114,7 +114,7 @@ buildCityProps(S.city||"newyork");
 
 const stationMeshes=[];
 const stationPositions={
- grill:[-4,0,0], fryer:[-1.8,0,0], oven:[.4,0,0], prep:[3,0,0], drinks:[5.4,0,0], fridge:[-5,0,2.7], dish:[5,0,2.7]
+ grill:[-4,0,0], fryer:[-1.8,0,0], oven:[.4,0,0], prep:[3,0,0], drinks:[5.4,0,0], fridge:[-5,0,2.7], dish:[5,0,2.7],warehouse:[0,0,4.4]
 };
 const stationColors={grill:0xef4444,fryer:0xf59e0b,oven:0x64748b,prep:0x10b981,drinks:0x38bdf8,fridge:0x60a5fa,dish:0xa78bfa};
 function buildStations(){
