@@ -52,6 +52,25 @@ function ok(id){return Object.entries(RECIPES[id].req).every(([k,v])=>(S.inv[k]|
 function consume(id){Object.entries(RECIPES[id].req).forEach(([k,v])=>S.inv[k]-=v)}
 
 // --- 3D CUSTOMER LAYER ---
+
+// --- INTERACTIVE 3D STATIONS ---
+const stationGroup=new THREE.Group(); scene.add(stationGroup);
+const stationMeshes=[];
+const stationPositions={
+ grill:[-4,0,0], fryer:[-1.8,0,0], oven:[.4,0,0], prep:[3,0,0], drinks:[5.4,0,0], fridge:[-5,0,2.7], dish:[5,0,2.7]
+};
+const stationColors={grill:0xef4444,fryer:0xf59e0b,oven:0x64748b,prep:0x10b981,drinks:0x38bdf8,fridge:0x60a5fa,dish:0xa78bfa};
+function buildStations(){
+ stationMeshes.forEach(m=>stationGroup.remove(m)); stationMeshes.length=0;
+ STATIONS.forEach(([id,icon,name],i)=>{
+  const p=stationPositions[id]||[0,0,0],g=new THREE.Group();g.position.set(p[0],0,p[2]);
+  const base=box(1.7,.8,1.35,stationColors[id]||0x64748b,0,.45,0);base.userData.station=id;g.add(base);
+  const top=box(1.5,.12,1.15,0x20242b,0,.91,0);g.add(top);
+  const lamp=cyl(.09,.35,stationColors[id]||0xffffff,0,1.15,0);g.add(lamp);
+  g.userData.station=id;g.userData.baseY=0;stationGroup.add(g);stationMeshes.push(g);
+ });
+}
+buildStations();
 const customerGroup=new THREE.Group(); scene.add(customerGroup);
 const customerMeshes=[];
 function createCustomer(o,index){
