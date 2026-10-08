@@ -213,7 +213,9 @@ function showTutorial(){
 function applyOfflineProgress(){const now=Date.now(),last=Number(S.lastSeen||now),elapsed=Math.max(0,Math.min(4*3600,(now-last)/1000));if(elapsed<60){S.lastSeen=now;return}const cookLevel=S.employees?.cook?.level||0,waiterLevel=S.employees?.waiter?.level||0;if(!cookLevel&&!waiterLevel){S.lastSeen=now;return;}const cycles=Math.floor(elapsed/30),earnings=cycles*(35+cookLevel*12+waiterLevel*15);if(earnings>0){S.cash+=earnings;S.lastSeen=now;setTimeout(()=>toast("🌙 Mientras estabas fuera +$"+earnings),700);save()}}
 window.addEventListener("pagehide",()=>{S.lastSeen=Date.now();save()});
 document.addEventListener("pointerdown",()=>WC.beep(420,.025),{once:true});
-setInterval(save,5000);\napplyOfflineProgress();\nsetTimeout(showTutorial,500);
+setInterval(save,5000);
+applyOfflineProgress();
+setTimeout(showTutorial,500);
 
 addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 if(!S.orders.length){addOrder();setTimeout(addOrder,2500);setTimeout(addOrder,5000)}else{S.selectedOrder=S.orders.some(o=>o.id===S.selectedOrder)?S.selectedOrder:S.orders[0].id;renderOrders();syncCustomers()}update();requestAnimationFrame(loop);
