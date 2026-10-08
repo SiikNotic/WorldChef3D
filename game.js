@@ -80,6 +80,11 @@ for(let i=0;i<4;i++){let x=-5+i*3.3;box(2.7,1,1,0x15181d,x,.5,-4.3);cyl(.27,.35,
 for(let k=0;k<3;k++){let x=-4+k*4;box(.7,.9,.7,0x9b673e,x,.45,3);cyl(.65,.12,0x6d4c35,x,.95,2.7)}
 function stationLevel(k){return S.stations[k]||0} function unlocked(id){return stationLevel(RECIPES[id].station)>0}
 function recipeValue(id){const r=RECIPES[id],lv=S.recipeLevels[id]||1;return Math.round(r.base*(1+(lv-1)*.2))}
+function inventoryCapacity(){
+ const fridge=stationLevel("fridge");
+ return 80+(fridge?fridge*40:0)+(S.expansion||0)*50;
+}
+function inventoryUsed(){return Object.values(S.inv||{}).reduce((a,b)=>a+(Number(b)||0),0)}
 function ok(id){return Object.entries(RECIPES[id].req).every(([k,v])=>(S.inv[k]||0)>=v)}
 function consume(id){Object.entries(RECIPES[id].req).forEach(([k,v])=>S.inv[k]-=v)}
 
@@ -186,7 +191,7 @@ function modal(kind){
   $("modal").classList.remove("hidden");
   let html="";
   if(kind==="inventory"){
-    html="<h2>📦 Inventario</h2><p>Compra lotes de 10.</p><div class='list'>"+Object.entries(S.inv).map(([k,v])=>'<div class="list-row"><div class="main"><b>'+k+'</b><small>'+v+" unidades</small></div><button class='mini-btn green' data-buy='"+k+"'>$25 +10</button></div>").join("")+"</div>";
+    html="<h2>📦 Inventario</h2><p>Almacenamiento: '+inventoryUsed()+'/'+inventoryCapacity()+' unidades.</p><div class='list'>"+Object.entries(S.inv).map(([k,v])=>'<div class="list-row"><div class="main"><b>'+k+'</b><small>'+v+" unidades</small></div><button class='mini-btn green' data-buy='"+k+"'>$25 +10</button></div>").join("")+"</div>";
   }else if(kind==="upgrades"){
     html="<h2>🔧 Cocina</h2><p>Las estaciones reducen tiempos y desbloquean recetas.</p><div class='list'>"+STATIONS.map(s=>{const[id,ic,n,req,cost]=s,lv=stationLevel(id),price=lv?Math.round(cost*(lv+1)):cost;return '<div class="list-row '+(!lv&&S.level<req?"locked":"")+'"><div class="main"><b>'+ic+" "+n+'</b><small>'+(lv?"Nivel "+lv+" → "+(lv+1):"Desbloqueo nivel "+req)+'</small></div><button class="mini-btn green" data-st="'+id+'" '+(!lv&&S.level<req?"disabled":"")+'>'+price.toLocaleString()+"</button></div>"}).join("")+"</div>";
   }else if(kind==="recipes"){
