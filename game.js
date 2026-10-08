@@ -191,7 +191,7 @@ function modal(kind){
   $("modal").classList.remove("hidden");
   let html="";
   if(kind==="inventory"){
-    html="<h2>📦 Inventario</h2><p>Almacenamiento: '+inventoryUsed()+'/'+inventoryCapacity()+' unidades.</p><div class='list'>"+Object.entries(S.inv).map(([k,v])=>'<div class="list-row"><div class="main"><b>'+k+'</b><small>'+v+" unidades</small></div><button class='mini-btn green' data-buy='"+k+"'>$25 +10</button></div>").join("")+"</div>";
+    html="<h2>📦 Inventario</h2><p>Almacenamiento: "+inventoryUsed()+"/"+inventoryCapacity()+" unidades.</p><div class='list'>"+Object.entries(S.inv).map(([k,v])=>'<div class="list-row"><div class="main"><b>'+k+'</b><small>'+v+" unidades</small></div><button class='mini-btn green' data-buy='"+k+"'>$25 +10</button></div>").join("")+"</div>";
   }else if(kind==="upgrades"){
     html="<h2>🔧 Cocina</h2><p>Las estaciones reducen tiempos y desbloquean recetas.</p><div class='list'>"+STATIONS.map(s=>{const[id,ic,n,req,cost]=s,lv=stationLevel(id),price=lv?Math.round(cost*(lv+1)):cost;return '<div class="list-row '+(!lv&&S.level<req?"locked":"")+'"><div class="main"><b>'+ic+" "+n+'</b><small>'+(lv?"Nivel "+lv+" → "+(lv+1):"Desbloqueo nivel "+req)+'</small></div><button class="mini-btn green" data-st="'+id+'" '+(!lv&&S.level<req?"disabled":"")+'>'+price.toLocaleString()+"</button></div>"}).join("")+"</div>";
   }else if(kind==="recipes"){
