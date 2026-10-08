@@ -11,7 +11,7 @@ const RECIPES={
 };
 const STATIONS=[["grill","🔥","Parrilla",1,350],["fryer","🍟","Freidora",2,600],["oven","🍕","Horno",3,1000],["prep","🔪","Preparación",5,1800],["drinks","🥤","Bebidas",2,750],["fridge","🧊","Nevera",1,900],["dish","🧼","Lavaplatos",2,1100]];
 const INITIAL_INV={bread:20,meat:20,cheese:20,lettuce:20,tomato:20,potato:30,dough:10,pepperoni:10,rice:20,fish:10,seaweed:10,syrup:20};
-function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{},expansion:0,city:"newyork"}}
+function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{},expansion:0,city:"newyork",activeEvent:null}}
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null"),d=fresh();if(!x)return d;Object.assign(d,x,{employees:{...d.employees,...(x.employees||{})},recipeLevels:{...d.recipeLevels,...(x.recipeLevels||{})},stations:{...d.stations,...(x.stations||{})},inv:{...d.inv,...(x.inv||{})}});d.orders=Array.isArray(x.orders)?x.orders:[];d.prepared=Array.isArray(x.prepared)?x.prepared:[];return d}catch{return fresh()}}
 let S=load(), cooking=false;
 // --- LIVE EVENTS ---
@@ -82,9 +82,9 @@ function addOrder(){
  const combo=S.restaurantLevel>=4&&Math.random()<.28;
  const second=combo?(pool.filter(x=>x!==first)[Math.floor(Math.random()*Math.max(1,pool.filter(x=>x!==first).length))]||first):null;
  const items=second?[first,second]:[first];
- const vip=Math.random()<Math.min(.18,.07+S.marketing*.015), specialRoll=Math.random(), special=specialRoll<.02?"celebrity":specialRoll<.03?"royal":(specialRoll<.06&&S.reputation>=90?"critic":null), base=Math.max(...items.map(x=>RECIPES[x].time));
- const waiterLevel=S.employees?.waiter?.level||0; const t=((vip?58:68)+Math.random()*14)*(1+waiterLevel*.08);
- const specialMultiplier=special==="royal"?3:special==="celebrity"?2.5:special==="critic"?1.5:1;const reward=Math.round(items.reduce((n,x)=>n+recipeValue(x),0)*(vip?2:1)*specialMultiplier);
+ const ev=eventData(); const vip=Math.random()<Math.min(.18,.07+S.marketing*.015), specialRoll=Math.random(), special=specialRoll<.02?"celebrity":specialRoll<.03?"royal":(specialRoll<.06&&S.reputation>=90?"critic":null), base=Math.max(...items.map(x=>RECIPES[x].time));
+ const waiterLevel=S.employees?.waiter?.level||0; const t=((vip?58:68)+Math.random()*14)*(1+waiterLevel*.08)/(ev?.orders||1);
+ const specialMultiplier=special==="royal"?3:special==="celebrity"?2.5:special==="critic"?1.5:1;const reward=Math.round(items.reduce((n,x)=>n+recipeValue(x),0)*(vip?2:1)*specialMultiplier*(ev?.bonus||1));
  S.orders.push({id:crypto.randomUUID(),recipe:first,items,vip,special,time:t,left:t,reward});
  if(!S.selectedOrder)S.selectedOrder=S.orders[0].id;
  renderOrders()
@@ -180,7 +180,7 @@ function upgradeEmployee(role){
   S.cash-=cost; e.level++; save(); toast("⭐ Empleado mejorado");
 }
 function contractTick(dt){const a=S.activeContract;if(!a)return;a.left-=dt;const complete=a.requirements?Object.entries(a.requirements).every(([id,n])=>(a.done?.[id]||0)>=n):a.done>=a.need;if(complete){S.cash+=a.reward;S.completedContracts++;gainXP(Math.round(a.reward/80));toast("🏆 Contrato completado +$"+a.reward);S.activeContract=null;save();return}if(a.left<=0){S.reputation=Math.max(0,S.reputation-10);toast("❌ Contrato fallido · reputación -10");S.activeContract=null;save()}}
-function loop(now){if(!loop.last)loop.last=now;const dt=(now-loop.last)/1000;loop.last=now;S.orders.forEach(o=>o.left-=dt);const expired=S.orders.filter(o=>o.left<=0);if(expired.length){const cleanerLevel=S.employees?.cleaner?.level||0;const reputationLoss=Math.max(1,3-cleanerLevel);const totalLoss=expired.reduce((sum,o)=>sum+(o.special==="critic"?5:reputationLoss),0);S.reputation=Math.max(0,S.reputation-totalLoss);S.orders=S.orders.filter(o=>o.left>0);if(!S.selectedOrder||!S.orders.some(o=>o.id===S.selectedOrder))S.selectedOrder=S.orders[0]?.id||null;expired.forEach((_,i)=>setTimeout(addOrder,700+i*300));toast("😠 Cliente se fue · reputación -"+totalLoss);syncCustomers()}contractTick(dt);update();renderer.render(scene,camera);customerMeshes.forEach(g=>{g.position.y=g.userData.baseY+Math.sin(now*.002+g.userData.phase)*.025});if(now-(loop.lastRender||0)>250){loop.lastRender=now;renderOrders()}requestAnimationFrame(loop)}
+function loop(now){eventTick((now-(loop.last||now))/1000);if(!loop.last)loop.last=now;const dt=(now-loop.last)/1000;loop.last=now;S.orders.forEach(o=>o.left-=dt);const expired=S.orders.filter(o=>o.left<=0);if(expired.length){const cleanerLevel=S.employees?.cleaner?.level||0;const reputationLoss=Math.max(1,3-cleanerLevel);const totalLoss=expired.reduce((sum,o)=>sum+(o.special==="critic"?5:reputationLoss),0);S.reputation=Math.max(0,S.reputation-totalLoss);S.orders=S.orders.filter(o=>o.left>0);if(!S.selectedOrder||!S.orders.some(o=>o.id===S.selectedOrder))S.selectedOrder=S.orders[0]?.id||null;expired.forEach((_,i)=>setTimeout(addOrder,700+i*300));toast("😠 Cliente se fue · reputación -"+totalLoss);syncCustomers()}contractTick(dt);update();renderer.render(scene,camera);customerMeshes.forEach(g=>{g.position.y=g.userData.baseY+Math.sin(now*.002+g.userData.phase)*.025});if(now-(loop.lastRender||0)>250){loop.lastRender=now;renderOrders()}requestAnimationFrame(loop)}
 
 
 // --- POLISH SYSTEMS: tutorial, achievements, audio, offline reward ---
