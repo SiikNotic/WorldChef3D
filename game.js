@@ -36,8 +36,10 @@ function eventData(){const a=eventState();return a?EVENTS.find(x=>x.id===a.id)||
 
 function save(){localStorage.setItem(KEY,JSON.stringify(S))}
 const scene=new THREE.Scene();const cityTheme={newyork:0x9eb7c4,tokyo:0x687b91,paris:0xb9a58f,china:0xc98f72,argentina:0x86a9b8};const initialCityColor=cityTheme[S.city]||cityTheme.newyork;scene.background=new THREE.Color(initialCityColor);scene.fog=new THREE.Fog(initialCityColor,13,30);
-const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,100);camera.position.set(8,8,10);
-const renderer=new THREE.WebGLRenderer({canvas:$("game"),antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,100);camera.position.set(10,9,12);
+const renderer=new THREE.WebGLRenderer({canvas:$("game"),antialias:false,powerPreference:"high-performance"});renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;
+renderer.domElement.addEventListener("webglcontextlost",ev=>{ev.preventDefault();toast("⚠️ Se perdió el contexto 3D. Recarga el juego.");});
+renderer.domElement.addEventListener("webglcontextrestored",()=>location.reload());
 
 // --- 3D TOUCH INTERACTION ---
 const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
@@ -70,7 +72,7 @@ function pointerStation(ev){
  }
 }
 renderer.domElement.addEventListener("pointerup",pointerStation);
-const controls=new OrbitControls(camera,renderer.domElement);controls.enablePan=false;controls.minDistance=8;controls.maxDistance=16;controls.minPolarAngle=.7;controls.maxPolarAngle=1.25;controls.target.set(0,1,0);
+const controls=new OrbitControls(camera,renderer.domElement);controls.enablePan=false;controls.minDistance=8;controls.maxDistance=16;controls.minPolarAngle=.7;controls.maxPolarAngle=1.25;controls.target.set(0,1,0);controls.update();
 scene.add(new THREE.HemisphereLight(0xffffff,0x405060,2));const sun=new THREE.DirectionalLight(0xffffff,3);sun.position.set(4,10,5);sun.castShadow=true;scene.add(sun);
 const restaurantWidth=14+(S.expansion||0)*3, restaurantDepth=12+(S.expansion||0)*2;
 function box(w,h,d,c,x,y,z){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:c,roughness:.75}));o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;scene.add(o);return o}
