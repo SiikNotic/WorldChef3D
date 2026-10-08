@@ -105,8 +105,8 @@ function buildCityProps(city){
  };
  (presets[city]||presets.newyork).forEach((item,i)=>{
   const g=new THREE.Group();g.position.set(-6+i*6,0,-5.2);
-  const h=1.2+(i%2)*.8;const base=box(1.5,h,1.2,item[1],0,h/2,0);g.add(base);
-  const roof=box(1.7,.18,1.4,0x20242b,0,h+.08,0);g.add(roof);g.userData.landmark=item[0];cityProps.add(g);
+  const h=1.2+(i%2)*.8;const base=box(1.5,h,1.2,item[1],0,h/2,0);scene.remove(base);g.add(base);
+  const roof=box(1.7,.18,1.4,0x20242b,0,h+.08,0);scene.remove(roof);g.add(roof);g.userData.landmark=item[0];cityProps.add(g);
  });
 }
 buildCityProps(S.city||"newyork");
@@ -120,9 +120,9 @@ function buildStations(){
  stationMeshes.forEach(m=>stationGroup.remove(m)); stationMeshes.length=0;
  STATIONS.forEach(([id,icon,name],i)=>{
   const p=stationPositions[id]||[0,0,0],g=new THREE.Group();g.position.set(p[0],0,p[2]);
-  const base=box(1.7,.8,1.35,stationColors[id]||0x64748b,0,.45,0);base.userData.station=id;g.add(base);
-  const top=box(1.5,.12,1.15,0x20242b,0,.91,0);g.add(top);
-  const lamp=cyl(.09,.35,stationColors[id]||0xffffff,0,1.15,0);g.add(lamp);
+  const base=box(1.7,.8,1.35,stationColors[id]||0x64748b,0,.45,0);scene.remove(base);base.userData.station=id;g.add(base);
+  const top=box(1.5,.12,1.15,0x20242b,0,.91,0);scene.remove(top);g.add(top);
+  const lamp=cyl(.09,.35,stationColors[id]||0xffffff,0,1.15,0);scene.remove(lamp);g.add(lamp);
   g.userData.station=id;g.userData.baseY=0;stationGroup.add(g);stationMeshes.push(g);
  });
 }
