@@ -2,6 +2,10 @@
 
 WorldChef3D is a mobile-first 3D restaurant management game designed to run directly in a phone browser and install as a PWA.
 
+▶️ **Jugar:** https://siiknotic.github.io/WorldChef3D/
+
+📲 **Instalar como app:** abre el enlace en Chrome (Android) y usa "Instalar app" / "Agregar a pantalla de inicio". En iPhone, abre en Safari → Compartir → "Agregar a pantalla de inicio". Funciona sin conexión una vez instalada.
+
 ## Current gameplay
 
 - 3D restaurant scene with animated customer characters.
@@ -32,7 +36,7 @@ The game is intentionally paced so that a single burger cannot instantly push th
 
 ## Run
 
-Open index.html in a modern browser. Three.js is loaded from a CDN.
+Open index.html in a modern browser. Three.js is bundled locally in `vendor/` (no runtime CDN dependency).
 
 For Android, open the GitHub Pages deployment in Chrome and use Add to Home screen / Install app when the browser offers it.
 
@@ -42,4 +46,4 @@ For Android, open the GitHub Pages deployment in Chrome and use Add to Home scre
 - 3D engine: Three.js.
 - Persistence: browser localStorage.
 - Hosting target: GitHub Pages.
-- Automated deployment validates game.js syntax before publishing.
+- Automated deployment validates game.js syntax and cache-version consistency before publishing.
