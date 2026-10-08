@@ -30,6 +30,30 @@ function stationLevel(k){return S.stations[k]||0} function unlocked(id){return s
 function recipeValue(id){const r=RECIPES[id],lv=S.recipeLevels[id]||1;return Math.round(r.base*(1+(lv-1)*.2))}
 function ok(id){return Object.entries(RECIPES[id].req).every(([k,v])=>(S.inv[k]||0)>=v)}
 function consume(id){Object.entries(RECIPES[id].req).forEach(([k,v])=>S.inv[k]-=v)}
+
+// --- 3D CUSTOMER LAYER ---
+const customerGroup=new THREE.Group(); scene.add(customerGroup);
+const customerMeshes=[];
+function createCustomer(o,index){
+  const g=new THREE.Group(), x=-4.8+(index%4)*3.2, z=2.2-Math.floor(index/4)*1.7;
+  g.position.set(x,.9,z);
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.42,.5,.9,12),new THREE.MeshStandardMaterial({color:[0x3b82f6,0xef4444,0xf59e0b,0x8b5cf6][index%4]}));
+  body.position.y=.45; body.castShadow=true; g.add(body);
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.34,16,12),new THREE.MeshStandardMaterial({color:0xd49b78}));
+  head.position.y=1.15; head.castShadow=true; g.add(head);
+  const bubble=box(.95,.5,.08,0x171b22,0,1.8,0); bubble.material.transparent=true; bubble.material.opacity=.92; bubble.userData.customer=true; g.add(bubble);
+  g.userData.baseY=.9; g.userData.phase=Math.random()*6.28; g.userData.order=o.id;
+  customerGroup.add(g); customerMeshes.push(g);
+}
+function syncCustomers(){
+  customerMeshes.forEach(g=>{if(g.parent)g.parent.remove(g)});
+  customerMeshes.length=0; S.orders.slice(0,8).forEach(createCustomer);
+}
+const oldAddOrder=addOrder;
+addOrder=function(){oldAddOrder();syncCustomers()};
+const oldServe=serve;
+serve=function(o){oldServe(o);syncCustomers()};
+
 function addOrder(){const pool=Object.keys(RECIPES).filter(unlocked),id=pool[Math.floor(Math.random()*pool.length)]||"burger",vip=Math.random()<.07,r=RECIPES[id],t=(vip?48:58)+Math.random()*12;S.orders.push({id:crypto.randomUUID(),recipe:id,vip,time:t,left:t,reward:Math.round(recipeValue(id)*(vip?2:1))});if(!S.selectedOrder)S.selectedOrder=S.orders[0].id;renderOrders()}
 function renderOrders(){$("orders").innerHTML=S.orders.map(o=>{const r=RECIPES[o.recipe],p=Math.max(0,o.left/o.time);return '<button class="order '+(o.vip?"vip ":"")+(o.id===S.selectedOrder?"selected":"")+'" data-order="'+o.id+'"><div class="order-head"><span>'+(o.vip?"💎 VIP":"🧑 Cliente")+'</span><span>'+r.icon+" "+r.name+'</span></div><div class="order-items">'+Object.entries(r.req).map(([k,v])=>v+"× "+k).join(" · ")+'</div><div class="timer"><span style="transform:scaleX('+p+')"></span></div><div class="order-reward"><span>'+(o.vip?"2× ":"")+"🪙 $"+o.reward+'</span><span>'+Math.ceil(o.left)+"s</span></div></button>"}).join("");$("orders").querySelectorAll("[data-order]").forEach(b=>b.onclick=()=>{S.selectedOrder=b.dataset.order;renderOrders();update()})}
 function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),1900)}
@@ -58,6 +82,6 @@ $("modalContent").querySelector("[data-reset]")?.addEventListener("click",()=>{i
 }
 $("closeModal").onclick=()=>$("modal").classList.add("hidden");$("inventoryBtn").onclick=()=>modal("inventory");$("contractsBtn").onclick=()=>modal("contracts");$("upgradesBtn").onclick=()=>modal("upgrades");$("recipesBtn").onclick=()=>modal("recipes");$("worldBtn").onclick=()=>modal("world");$("restaurantBtn").onclick=()=>modal("restaurant");$("cookBtn").onclick=cook;$("serveBtn")?.addEventListener("click",serveSelected);
 function contractTick(dt){const a=S.activeContract;if(!a)return;a.left-=dt;if(a.left<=0){if(a.done>=a.need){S.cash+=a.reward;S.completedContracts++;gainXP(Math.round(a.reward/80));toast("🏆 Contrato completado +$"+a.reward)}else{S.reputation=Math.max(0,S.reputation-10);toast("❌ Contrato fallido · reputación -10")}S.activeContract=null}}
-function loop(now){if(!loop.last)loop.last=now;const dt=(now-loop.last)/1000;loop.last=now;S.orders.forEach(o=>o.left-=dt);const expired=S.orders.filter(o=>o.left<=0);if(expired.length){S.reputation=Math.max(0,S.reputation-expired.length*3);S.orders=S.orders.filter(o=>o.left>0);if(!S.selectedOrder||!S.orders.some(o=>o.id===S.selectedOrder))S.selectedOrder=S.orders[0]?.id||null;expired.forEach((_,i)=>setTimeout(addOrder,700+i*300));toast("😠 Cliente se fue · reputación -"+expired.length*3)}contractTick(dt);renderOrders();update();renderer.render(scene,camera);requestAnimationFrame(loop)}
+function loop(now){if(!loop.last)loop.last=now;const dt=(now-loop.last)/1000;loop.last=now;S.orders.forEach(o=>o.left-=dt);const expired=S.orders.filter(o=>o.left<=0);if(expired.length){S.reputation=Math.max(0,S.reputation-expired.length*3);S.orders=S.orders.filter(o=>o.left>0);if(!S.selectedOrder||!S.orders.some(o=>o.id===S.selectedOrder))S.selectedOrder=S.orders[0]?.id||null;expired.forEach((_,i)=>setTimeout(addOrder,700+i*300));toast("😠 Cliente se fue · reputación -"+expired.length*3)}contractTick(dt);renderOrders();update();renderer.render(scene,camera);customerMeshes.forEach(g=>{g.position.y=g.userData.baseY+Math.sin(now*.002+g.userData.phase)*.025});requestAnimationFrame(loop)}
 addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-if(!S.orders.length){addOrder();setTimeout(addOrder,2500);setTimeout(addOrder,5000)}else{S.selectedOrder=S.orders.some(o=>o.id===S.selectedOrder)?S.selectedOrder:S.orders[0].id;renderOrders()}update();requestAnimationFrame(loop);
+if(!S.orders.length){addOrder();setTimeout(addOrder,2500);setTimeout(addOrder,5000)}else{S.selectedOrder=S.orders.some(o=>o.id===S.selectedOrder)?S.selectedOrder:S.orders[0].id;renderOrders();syncCustomers()}update();requestAnimationFrame(loop);
