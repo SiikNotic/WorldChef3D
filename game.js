@@ -173,7 +173,9 @@ function addOrder(){
  const first=pool[Math.floor(Math.random()*pool.length)]||"burger";
  const combo=S.restaurantLevel>=4&&Math.random()<.28;
  const second=combo?(pool.filter(x=>x!==first)[Math.floor(Math.random()*Math.max(1,pool.filter(x=>x!==first).length))]||first):null;
- const items=second?[first,second]:[first];
+ const triple=S.restaurantLevel>=10&&combo&&Math.random()<.32;
+ const third=triple?(pool.filter(x=>x!==first&&x!==second)[Math.floor(Math.random()*Math.max(1,pool.filter(x=>x!==first&&x!==second).length))]||null):null;
+ const items=third?[first,second,third]:second?[first,second]:[first];
  const ev=eventData(); const vip=Math.random()<Math.min(.18,.07+S.marketing*.015), specialRoll=Math.random(), special=specialRoll<.02?"celebrity":specialRoll<.03?"royal":(specialRoll<.06&&S.reputation>=90?"critic":null), base=Math.max(...items.map(x=>RECIPES[x].time));
  const waiterLevel=S.employees?.waiter?.level||0; const t=((vip?58:68)+Math.random()*14)*(1+waiterLevel*.08)/(ev?.orders||1);
  const specialMultiplier=special==="royal"?3:special==="celebrity"?2.5:special==="critic"?1.5:1;const reward=Math.round(items.reduce((n,x)=>n+recipeValue(x),0)*(vip?2:1)*specialMultiplier*(ev?.bonus||1));
