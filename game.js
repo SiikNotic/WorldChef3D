@@ -186,7 +186,7 @@ function serve(o){
  toast((o.vip?"💎 VIP satisfecho · ":"")+"Orden servida +$"+o.reward);setTimeout(addOrder,Math.max(450,1200-S.marketing*90));renderOrders();update()
 }
 function serveSelected(){const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0];if(!o)return toast("No hay cliente seleccionado");serve(o)}
-function buyIngredient(k){if(S.cash<25)return toast("No tienes suficiente dinero");S.cash-=25;S.inv[k]=(S.inv[k]||0)+10;update();modal("inventory")}
+function buyIngredient(k){if(S.cash<25)return toast("No tienes suficiente dinero");if(inventoryUsed()+10>inventoryCapacity())return toast("🧊 Almacenamiento lleno");S.cash-=25;S.inv[k]=(S.inv[k]||0)+10;save();update();modal("inventory")}
 function modal(kind){
   $("modal").classList.remove("hidden");
   let html="";
