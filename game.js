@@ -11,8 +11,8 @@ const RECIPES={
 };
 const STATIONS=[["grill","🔥","Parrilla",1,350],["fryer","🍟","Freidora",2,600],["oven","🍕","Horno",3,1000],["prep","🔪","Preparación",5,1800],["drinks","🥤","Bebidas",2,750],["fridge","🧊","Nevera",1,900],["dish","🧼","Lavaplatos",2,1100]];
 const INITIAL_INV={bread:20,meat:20,cheese:20,lettuce:20,tomato:20,potato:30,dough:10,pepperoni:10,rice:20,fish:10,seaweed:10,syrup:20};
-function fresh(){return{level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,activeContract:null,marketing:0,completedContracts:0}}
-function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null"),d=fresh();if(!x)return d;Object.assign(d,x,{recipeLevels:{...d.recipeLevels,...(x.recipeLevels||{})},stations:{...d.stations,...(x.stations||{})},inv:{...d.inv,...(x.inv||{})}});d.orders=Array.isArray(x.orders)?x.orders:[];d.prepared=Array.isArray(x.prepared)?x.prepared:[];return d}catch{return fresh()}}
+function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,activeContract:null,marketing:0,completedContracts:0}}
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null"),d=fresh();if(!x)return d;Object.assign(d,x,{employees:{...d.employees,...(x.employees||{})},recipeLevels:{...d.recipeLevels,...(x.recipeLevels||{})},stations:{...d.stations,...(x.stations||{})},inv:{...d.inv,...(x.inv||{})}});d.orders=Array.isArray(x.orders)?x.orders:[];d.prepared=Array.isArray(x.prepared)?x.prepared:[];return d}catch{return fresh()}}
 let S=load(), cooking=false;
 function save(){localStorage.setItem(KEY,JSON.stringify(S))}
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x9eb7c4);scene.fog=new THREE.Fog(0x9eb7c4,13,30);
@@ -69,10 +69,16 @@ function modal(kind){$("modal").classList.remove("hidden");let html="";
 if(kind==="inventory")html="<h2>📦 Inventario</h2><p>Compra lotes de 10.</p><div class='list'>"+Object.entries(S.inv).map(([k,v])=>'<div class="list-row"><div class="main"><b>'+k+'</b><small>'+v+" unidades</small></div><button class='mini-btn green' data-buy='"+k+"'>$25 +10</button></div>").join("")+"</div>";
 else if(kind==="upgrades")html="<h2>🔧 Cocina</h2><p>Las estaciones reducen tiempos y desbloquean recetas.</p><div class='list'>"+STATIONS.map(s=>{const[id,ic,n,req,cost]=s,lv=stationLevel(id),price=lv?Math.round(cost*(lv+1)):cost;return '<div class="list-row '+(!lv&&S.level<req?"locked":"")+'"><div class="main"><b>'+ic+" "+n+'</b><small>'+(lv?"Nivel "+lv+" → "+(lv+1):"Desbloqueo nivel "+req)+'</small></div><button class="mini-btn green" data-st="'+id+'" '+(!lv&&S.level<req?"disabled":"")+'>'+price.toLocaleString()+"</button></div>"}).join("")+"</div>";
 else if(kind==="recipes")html="<h2>📖 Recetas</h2><div class='list'>"+Object.entries(RECIPES).map(([id,r])=>{const lv=S.recipeLevels[id]||0,locked=!unlocked(id);return '<div class="list-row '+(locked?"locked":"")+'"><div class="main"><b>'+r.icon+" "+r.name+'</b><small>'+(locked?"🔒 Requiere estación "+r.station:"Nivel "+(lv||1)+" · $"+recipeValue(id)+" por orden")+'</small></div><button class="mini-btn '+(!locked?"green":"")+'" data-rec="'+id+'">'+(locked?"🔒":"MEJORAR $"+500*(lv||1))+"</button></div>"}).join("")+"</div>";
+else if(kind==="employees"){
+html="<h2>👥 Personal</h2><p>Contrata empleados para preparar y atender más rápido.</p><div class='list'>"+[
+["cook","👨‍🍳 Cocinero",1500],["waiter","🧑‍🍳 Mesero",1800],["cleaner","🧹 Limpieza",1200]
+].map(e=>{const cur=S.employees?.[e[0]],cost=cur?1000*cur.level:e[2];return '<div class="list-row"><div class="main"><b>'+e[1]+'</b><small>'+(cur?"Nivel "+cur.level:"Sin contratar")+'</small></div><button class="mini-btn green" data-emp="'+e[0]+'">'+(cur?"MEJORAR $"+cost:"CONTRATAR $"+cost)+'</button></div>'}).join("")+"</div>";
+}
 else if(kind==="contracts"){const a=S.activeContract;html="<h2>📋 Contratos</h2><p>Produce platos reales dentro del límite de tiempo.</p>"+(a?'<div class="contract active"><b>📦 '+a.name+'</b><small>Progreso '+a.done+"/"+a.need+" · "+Math.ceil(a.left/60)+" min</small><div class='progress'><span style='width:"+(a.done/a.need*100)+"%'></span></div></div>":"<div class='list'>"+[["🎂 Cumpleaños",20,2500,1],["🏢 Corporativo",60,8500,3],["👽 Galáctico",200,35000,8]].map(c=>'<div class="list-row"><div class="main"><b>'+c[0]+'</b><small>'+c[1]+" platos · 10 min · Restaurante "+c[3]+'</small></div><button class="mini-btn green" data-contract="'+c[1]+"|"+c[2]+"|"+c[3]+"|"+c[0]+'">ACEPTAR</button></div>').join("")+"</div>")};
 else if(kind==="world")html="<h2>🌎 Mundo</h2><div class='list'>"+[["🇺🇸 Nueva York",1],["🇯🇵 Tokio",11],["🇫🇷 París",21],["🇨🇳 China",31],["🇦🇷 Argentina",41]].map(c=>'<div class="list-row '+(S.level>=c[1]?"":"locked")+'"><div class="main"><b>'+c[0]+'</b><small>'+(S.level>=c[1]?"Disponible":"Nivel "+c[1])+'</small></div><button class="mini-btn">'+(S.level>=c[1]?"ENTRAR":"🔒")+"</button></div>").join("")+"</div>";
 else html="<h2>🏪 Restaurante</h2><p>Reputación ⭐ "+S.reputation+"% · Nivel "+S.restaurantLevel+"</p><div class='list'><div class='list-row'><div class='main'><b>Pedidos completados</b><small>"+S.totalOrders+"</small></div></div><div class='list-row'><div class='main'><b>Marketing</b><small>Mejora la llegada de clientes.</small></div><button class='mini-btn green' data-marketing='1'>$500</button></div><div class='list-row'><div class='main'><b>Guardar</b><small>Guardado automático en este dispositivo.</small></div></div><div class='list-row'><div class='main'><b>Reiniciar</b><small>Borra todo el progreso.</small></div><button class='mini-btn' data-reset='1'>RESET</button></div></div>";
 $("modalContent").innerHTML=html;
+$("modalContent").querySelectorAll("[data-emp]").forEach(b=>b.onclick=()=>{upgradeEmployee(b.dataset.emp);modal("employees")});
 $("modalContent").querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>buyIngredient(b.dataset.buy));
 $("modalContent").querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{const id=b.dataset.st,s=STATIONS.find(x=>x[0]===id),lv=stationLevel(id),price=lv?Math.round(s[4]*(lv+1)):s[4];if(S.cash<price)return toast("Necesitas $"+price);if(!lv&&S.level<s[3])return toast("🔒 Necesitas nivel "+s[3]);S.cash-=price;S.stations[id]=(lv||0)+1;toast("🔧 "+s[2]+" mejorada");update();modal("upgrades")});
 $("modalContent").querySelectorAll("[data-rec]").forEach(b=>b.onclick=()=>{const id=b.dataset.rec;if(!unlocked(id))return toast("🔒 Primero desbloquea la estación");const lv=S.recipeLevels[id]||1,cost=500*lv;if(S.cash<cost)return toast("Necesitas $"+cost);S.cash-=cost;S.recipeLevels[id]=lv+1;toast("📖 Receta mejorada");update();modal("recipes")});
@@ -81,6 +87,20 @@ $("modalContent").querySelector("[data-marketing]")?.addEventListener("click",()
 $("modalContent").querySelector("[data-reset]")?.addEventListener("click",()=>{if(confirm("¿Borrar toda la partida?")){localStorage.removeItem(KEY);location.reload()}});
 }
 $("closeModal").onclick=()=>$("modal").classList.add("hidden");$("inventoryBtn").onclick=()=>modal("inventory");$("contractsBtn").onclick=()=>modal("contracts");$("upgradesBtn").onclick=()=>modal("upgrades");$("recipesBtn").onclick=()=>modal("recipes");$("worldBtn").onclick=()=>modal("world");$("restaurantBtn").onclick=()=>modal("restaurant");$("cookBtn").onclick=cook;$("serveBtn")?.addEventListener("click",serveSelected);
+function hireEmployee(role){
+  S.employees=S.employees||{};
+  if(S.employees[role]) return toast("Ese empleado ya está contratado");
+  const costs={cook:1500,waiter:1800,cleaner:1200}, cost=costs[role]||1500;
+  if(S.cash<cost) return toast("Necesitas $"+cost);
+  S.cash-=cost; S.employees[role]={level:1}; save(); toast("👥 Empleado contratado");
+}
+function upgradeEmployee(role){
+  const e=S.employees?.[role];
+  if(!e) return hireEmployee(role);
+  const cost=1000*e.level;
+  if(S.cash<cost) return toast("Necesitas $"+cost);
+  S.cash-=cost; e.level++; save(); toast("⭐ Empleado mejorado");
+}
 function contractTick(dt){const a=S.activeContract;if(!a)return;a.left-=dt;if(a.left<=0){if(a.done>=a.need){S.cash+=a.reward;S.completedContracts++;gainXP(Math.round(a.reward/80));toast("🏆 Contrato completado +$"+a.reward)}else{S.reputation=Math.max(0,S.reputation-10);toast("❌ Contrato fallido · reputación -10")}S.activeContract=null}}
 function loop(now){if(!loop.last)loop.last=now;const dt=(now-loop.last)/1000;loop.last=now;S.orders.forEach(o=>o.left-=dt);const expired=S.orders.filter(o=>o.left<=0);if(expired.length){S.reputation=Math.max(0,S.reputation-expired.length*3);S.orders=S.orders.filter(o=>o.left>0);if(!S.selectedOrder||!S.orders.some(o=>o.id===S.selectedOrder))S.selectedOrder=S.orders[0]?.id||null;expired.forEach((_,i)=>setTimeout(addOrder,700+i*300));toast("😠 Cliente se fue · reputación -"+expired.length*3)}contractTick(dt);renderOrders();update();renderer.render(scene,camera);customerMeshes.forEach(g=>{g.position.y=g.userData.baseY+Math.sin(now*.002+g.userData.phase)*.025});requestAnimationFrame(loop)}
 addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
