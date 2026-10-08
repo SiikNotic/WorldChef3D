@@ -11,7 +11,7 @@ const RECIPES={
 };
 const STATIONS=[["grill","🔥","Parrilla",1,350],["fryer","🍟","Freidora",2,600],["oven","🍕","Horno",3,1000],["prep","🔪","Preparación",5,1800],["drinks","🥤","Bebidas",2,750],["fridge","🧊","Nevera",1,900],["dish","🧼","Lavaplatos",2,1100]];
 const INITIAL_INV={bread:20,meat:20,cheese:20,lettuce:20,tomato:20,potato:30,dough:10,pepperoni:10,rice:20,fish:10,seaweed:10,syrup:20};
-function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,totalEarnings:0,vipServed:0,specialServed:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,selectedStationRecipe:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{},expansion:0,city:"newyork",activeEvent:null,activeStation:null}}
+function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,totalEarnings:0,vipServed:0,specialServed:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,selectedStationRecipe:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{},settings:{sound:true,language:"es"},expansion:0,city:"newyork",activeEvent:null,activeStation:null}}
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null"),d=fresh();if(!x)return d;Object.assign(d,x,{employees:{...d.employees,...(x.employees||{})},recipeLevels:{...d.recipeLevels,...(x.recipeLevels||{})},stations:{...d.stations,...(x.stations||{})},inv:{...d.inv,...(x.inv||{})}});d.orders=Array.isArray(x.orders)?x.orders:[];d.prepared=Array.isArray(x.prepared)?x.prepared:[];return d}catch{return fresh()}}
 let S=load(), cooking=false;
 // --- LIVE EVENTS ---
@@ -187,6 +187,7 @@ function serve(o){
 }
 function serveSelected(){const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0];if(!o)return toast("No hay cliente seleccionado");serve(o)}
 function buyIngredient(k){if(S.cash<25)return toast("No tienes suficiente dinero");if(inventoryUsed()+10>inventoryCapacity())return toast("🧊 Almacenamiento lleno");S.cash-=25;S.inv[k]=(S.inv[k]||0)+10;save();update();modal("inventory")}
+function toggleSound(){S.settings=S.settings||{};S.settings.sound=!S.settings.sound;save();if(S.settings.sound)WC.beep(700,.08);modal("settings")}
 function modal(kind){
   $("modal").classList.remove("hidden");
   let html="";
@@ -240,7 +241,7 @@ function modal(kind){
       "<div class='list-row'><div class='main'><b>Reiniciar</b><small>Borra todo el progreso.</small></div><button class='mini-btn' data-reset='1'>RESET</button></div></div>";
   }
   $("modalContent").innerHTML=html;
-  $("modalContent").querySelectorAll("[data-emp]").forEach(b=>b.onclick=()=>{upgradeEmployee(b.dataset.emp);modal("employees")});
+  $("modalContent").querySelector("#soundToggle")?.addEventListener("click",toggleSound);\n  $("modalContent").querySelectorAll("[data-emp]").forEach(b=>b.onclick=()=>{upgradeEmployee(b.dataset.emp);modal("employees")});
   $("modalContent").querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>buyIngredient(b.dataset.buy));
   $("modalContent").querySelector("[data-expansion]")?.addEventListener("click",()=>expandRestaurant());
   $("modalContent").querySelectorAll("[data-city-index]").forEach(b=>b.onclick=()=>travelCity(+b.dataset.cityIndex));
@@ -275,7 +276,7 @@ function loop(now){eventTick((now-(loop.last||now))/1000);if(!loop.last)loop.las
 // --- POLISH SYSTEMS: tutorial, achievements, audio, offline reward ---
 const WC={
   audio:null,
-  beep(freq=520,duration=.07,type="sine"){
+  beep(freq=520,duration=.07,type="sine"){if(S.settings&&!S.settings.sound)return;
     try{
       if(!this.audio)this.audio=new (window.AudioContext||window.webkitAudioContext)();
       const o=this.audio.createOscillator(),g=this.audio.createGain();
@@ -325,7 +326,7 @@ setInterval(save,5000);
 applyOfflineProgress();
 setTimeout(showTutorial,500);
 
-$("eventBtn").onclick=()=>modal("events");
+$("eventBtn").onclick=()=>modal("events");$("settingsBtn").onclick=()=>modal("settings");
 addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 rebuildStaff();
 if(!S.orders.length){addOrder();setTimeout(addOrder,2500);setTimeout(addOrder,5000)}else{S.selectedOrder=S.orders.some(o=>o.id===S.selectedOrder)?S.selectedOrder:S.orders[0].id;renderOrders();syncCustomers()}update();requestAnimationFrame(loop);
