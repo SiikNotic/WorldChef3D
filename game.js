@@ -11,7 +11,7 @@ const RECIPES={
 };
 const STATIONS=[["grill","🔥","Parrilla",1,350],["fryer","🍟","Freidora",2,600],["oven","🍕","Horno",3,1000],["prep","🔪","Preparación",5,1800],["drinks","🥤","Bebidas",2,750],["fridge","🧊","Nevera",1,900],["dish","🧼","Lavaplatos",2,1100]];
 const INITIAL_INV={bread:20,meat:20,cheese:20,lettuce:20,tomato:20,potato:30,dough:10,pepperoni:10,rice:20,fish:10,seaweed:10,syrup:20};
-function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,activeContract:null,marketing:0,completedContracts:0}}
+function fresh(){return{employees:{},level:1,xp:0,xpGoal:100,cash:500,gems:10,reputation:100,totalOrders:0,restaurantLevel:1,recipeLevels:{burger:1},stations:{grill:1},inv:{...INITIAL_INV},orders:[],prepared:[],selectedOrder:null,activeContract:null,marketing:0,completedContracts:0,lastSeen:Date.now(),tutorialDone:false,achievements:{}}}
 function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"null"),d=fresh();if(!x)return d;Object.assign(d,x,{employees:{...d.employees,...(x.employees||{})},recipeLevels:{...d.recipeLevels,...(x.recipeLevels||{})},stations:{...d.stations,...(x.stations||{})},inv:{...d.inv,...(x.inv||{})}});d.orders=Array.isArray(x.orders)?x.orders:[];d.prepared=Array.isArray(x.prepared)?x.prepared:[];return d}catch{return fresh()}}
 let S=load(), cooking=false;
 function save(){localStorage.setItem(KEY,JSON.stringify(S))}
@@ -55,13 +55,15 @@ const oldServe=serve;
 serve=function(o){oldServe(o);syncCustomers()};
 
 function addOrder(){
+ const capacity=3+Math.max(0,S.restaurantLevel-1)+(S.employees?.waiter?.level||0);
+ if(S.orders.length>=capacity)return;
  const pool=Object.keys(RECIPES).filter(unlocked);
  const first=pool[Math.floor(Math.random()*pool.length)]||"burger";
  const combo=S.restaurantLevel>=4&&Math.random()<.28;
  const second=combo?(pool.filter(x=>x!==first)[Math.floor(Math.random()*Math.max(1,pool.filter(x=>x!==first).length))]||first):null;
  const items=second?[first,second]:[first];
  const vip=Math.random()<.07, base=Math.max(...items.map(x=>RECIPES[x].time));
- const t=(vip?58:68)+Math.random()*14;
+ const waiterLevel=S.employees?.waiter?.level||0; const t=((vip?58:68)+Math.random()*14)*(1+waiterLevel*.08);
  const reward=Math.round(items.reduce((n,x)=>n+recipeValue(x),0)*(vip?2:1));
  S.orders.push({id:crypto.randomUUID(),recipe:first,items,vip,time:t,left:t,reward});
  if(!S.selectedOrder)S.selectedOrder=S.orders[0].id;
@@ -69,10 +71,10 @@ function addOrder(){
 }
 function renderOrders(){$("orders").innerHTML=S.orders.map(o=>{const r=RECIPES[o.recipe],items=o.items||[o.recipe],p=Math.max(0,o.left/o.time);return '<button class="order '+(o.vip?"vip ":"")+(o.id===S.selectedOrder?"selected":"")+'" data-order="'+o.id+'"><div class="order-head"><span>'+(o.vip?"💎 VIP":"🧑 Cliente")+'</span><span>'+r.icon+" "+r.name+'</span></div><div class="order-items">'+items.map(x=>RECIPES[x].icon+" "+RECIPES[x].name).join(" + ")+'</div><div class="timer"><span style="transform:scaleX('+p+')"></span></div><div class="order-reward"><span>'+(o.vip?"2× ":"")+"🪙 $"+o.reward+'</span><span>'+Math.ceil(o.left)+"s</span></div></button>"}).join("");$("orders").querySelectorAll("[data-order]").forEach(b=>b.onclick=()=>{S.selectedOrder=b.dataset.order;renderOrders();update()})}
 function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),1900)}
-function update(){const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0],id=o?.recipe||Object.keys(RECIPES).find(unlocked)||"burger",r=RECIPES[id],lv=stationLevel(r.station);$("level").textContent=S.level;$("cash").textContent="$"+S.cash.toLocaleString();$("gems").textContent=S.gems;$("rep").textContent=S.reputation+"%";$("xpBar").style.width=Math.min(100,S.xp/S.xpGoal*100)+"%";$("xpText").textContent=S.xp+" / "+S.xpGoal+" XP";$("stationName").textContent=STATIONS.find(x=>x[0]===r.station)?.[2]||"Parrilla";$("stationInfo").textContent="Nivel "+lv+" · "+r.time+"s";$("cookBtn").innerHTML="COCINAR "+r.icon+" "+r.name.toUpperCase()+" <span>"+r.time+"s</span>";$("ingredients").innerHTML=Object.entries(r.req).map(([k,v])=>'<div class="ingredient">'+k+'<small>'+v+" · "+(S.inv[k]||0)+" disponibles</small></div>").join("");$("restaurantLevel").textContent=S.restaurantLevel;$("preparedCount")&&($("preparedCount").textContent=S.prepared.length);save()}
+function update(){const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0],id=o?.recipe||Object.keys(RECIPES).find(unlocked)||"burger",r=RECIPES[id],lv=stationLevel(r.station);$("level").textContent=S.level;$("cash").textContent="$"+S.cash.toLocaleString();$("gems").textContent=S.gems;$("rep").textContent=S.reputation+"%";$("xpBar").style.width=Math.min(100,S.xp/S.xpGoal*100)+"%";$("xpText").textContent=S.xp+" / "+S.xpGoal+" XP";$("stationName").textContent=STATIONS.find(x=>x[0]===r.station)?.[2]||"Parrilla";$("stationInfo").textContent="Nivel "+lv+" · "+r.time+"s";$("cookBtn").innerHTML="COCINAR "+r.icon+" "+r.name.toUpperCase()+" <span>"+r.time+"s</span>";$("ingredients").innerHTML=Object.entries(r.req).map(([k,v])=>'<div class="ingredient">'+k+'<small>'+v+" · "+(S.inv[k]||0)+" disponibles</small></div>").join("");$("restaurantLevel").textContent=S.restaurantLevel;$("preparedCount")&&($("preparedCount").textContent=S.prepared.length)}
 function gainXP(n){S.xp+=n;while(S.xp>=S.xpGoal){S.xp-=S.xpGoal;S.level++;S.xpGoal=Math.floor(S.xpGoal*1.5);toast("⭐ Nivel "+S.level+" desbloqueado")}checkRestaurant()}
 function checkRestaurant(){const target=Math.min(20,1+Math.floor(S.totalOrders/15));if(target>S.restaurantLevel&&S.cash>=target*500&&S.reputation>=80){S.cash-=target*500;S.restaurantLevel=target;toast("🏪 Restaurante nivel "+target+"!")}}
-function cook(){if(cooking)return;const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0],items=o?.items||[o?.recipe||"burger"],counts={};items.forEach(x=>counts[x]=(counts[x]||0)+1);const id=Object.keys(counts).find(x=>S.prepared.filter(p=>p.recipe===x).length<counts[x])||items[0],r=RECIPES[id];if(!unlocked(id)){toast("🔒 Estación bloqueada");return}if(!ok(id)){toast("⚠️ Faltan ingredientes para "+r.name);return}consume(id);cooking=true;$("cookBtn").disabled=true;const duration=Math.max(2,r.time-(stationLevel(r.station)-1)*.8),start=performance.now();function tick(now){const left=duration-(now-start)/1000;if(left<=0)return finish(id);$("cookBtn").innerHTML="🔥 COCINANDO "+Math.ceil(left)+"s";requestAnimationFrame(tick)}requestAnimationFrame(tick);update()}
+function cook(){if(cooking)return;const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0],items=o?.items||[o?.recipe||"burger"],counts={};items.forEach(x=>counts[x]=(counts[x]||0)+1);const id=Object.keys(counts).find(x=>S.prepared.filter(p=>p.recipe===x).length<counts[x])||items[0],r=RECIPES[id];if(!unlocked(id)){toast("🔒 Estación bloqueada");return}if(!ok(id)){toast("⚠️ Faltan ingredientes para "+r.name);return}consume(id);cooking=true;$("cookBtn").disabled=true;const cookLevel=S.employees?.cook?.level||0;const staffSpeed=Math.max(.55,1-cookLevel*.08);const duration=Math.max(2,(r.time-(stationLevel(r.station)-1)*.8)*staffSpeed),start=performance.now();function tick(now){const left=duration-(now-start)/1000;if(left<=0)return finish(id);$("cookBtn").innerHTML="🔥 COCINANDO "+Math.ceil(left)+"s";requestAnimationFrame(tick)}requestAnimationFrame(tick);update()}
 function finish(id){cooking=false;$("cookBtn").disabled=false;S.prepared.push({recipe:id,created:Date.now()});if(S.activeContract)S.activeContract.done=Math.min(S.activeContract.need,S.activeContract.done+1);const o=S.orders.find(x=>x.id===S.selectedOrder)||S.orders[0],r=RECIPES[id];if(o&&o.recipe===id){serve(o)}else toast("🍽️ "+r.name+" preparada. Selecciona el cliente correcto y pulsa SERVIR.");update()}
 function serve(o){
  const items=o.items||[o.recipe];
@@ -122,7 +124,7 @@ function upgradeEmployee(role){
   S.cash-=cost; e.level++; save(); toast("⭐ Empleado mejorado");
 }
 function contractTick(dt){const a=S.activeContract;if(!a)return;a.left-=dt;if(a.left<=0){if(a.done>=a.need){S.cash+=a.reward;S.completedContracts++;gainXP(Math.round(a.reward/80));toast("🏆 Contrato completado +$"+a.reward)}else{S.reputation=Math.max(0,S.reputation-10);toast("❌ Contrato fallido · reputación -10")}S.activeContract=null}}
-function loop(now){if(!loop.last)loop.last=now;const dt=(now-loop.last)/1000;loop.last=now;S.orders.forEach(o=>o.left-=dt);const expired=S.orders.filter(o=>o.left<=0);if(expired.length){S.reputation=Math.max(0,S.reputation-expired.length*3);S.orders=S.orders.filter(o=>o.left>0);if(!S.selectedOrder||!S.orders.some(o=>o.id===S.selectedOrder))S.selectedOrder=S.orders[0]?.id||null;expired.forEach((_,i)=>setTimeout(addOrder,700+i*300));toast("😠 Cliente se fue · reputación -"+expired.length*3)}contractTick(dt);renderOrders();update();renderer.render(scene,camera);customerMeshes.forEach(g=>{g.position.y=g.userData.baseY+Math.sin(now*.002+g.userData.phase)*.025});requestAnimationFrame(loop)}
+function loop(now){if(!loop.last)loop.last=now;const dt=(now-loop.last)/1000;loop.last=now;S.orders.forEach(o=>o.left-=dt);const expired=S.orders.filter(o=>o.left<=0);if(expired.length){const cleanerLevel=S.employees?.cleaner?.level||0;const reputationLoss=Math.max(1,3-cleanerLevel);S.reputation=Math.max(0,S.reputation-expired.length*reputationLoss);S.orders=S.orders.filter(o=>o.left>0);if(!S.selectedOrder||!S.orders.some(o=>o.id===S.selectedOrder))S.selectedOrder=S.orders[0]?.id||null;expired.forEach((_,i)=>setTimeout(addOrder,700+i*300));toast("😠 Cliente se fue · reputación -"+expired.length*reputationLoss)}contractTick(dt);renderOrders();update();renderer.render(scene,camera);customerMeshes.forEach(g=>{g.position.y=g.userData.baseY+Math.sin(now*.002+g.userData.phase)*.025});requestAnimationFrame(loop)}
 
 
 // --- POLISH SYSTEMS: tutorial, achievements, audio, offline reward ---
@@ -171,9 +173,10 @@ function showTutorial(){
   const render=()=>{const [a,b]=steps[n];el.innerHTML="<div class='tutorial-card'><div class='tutorial-step'>"+(n+1)+" / "+steps.length+"</div><h2>"+a+"</h2><p>"+b+"</p><button id='tutorialNext'>"+(n===steps.length-1?"EMPEZAR":"SIGUIENTE")+"</button></div>";el.querySelector("button").onclick=()=>{WC.beep(620);if(n===steps.length-1){S.tutorialDone=true;save();el.remove()}else{n++;render()}}};
   document.body.appendChild(el);render();
 }
+function applyOfflineProgress(){const now=Date.now(),last=Number(S.lastSeen||now),elapsed=Math.max(0,Math.min(4*3600,(now-last)/1000));if(elapsed<60)return;const cookLevel=S.employees?.cook?.level||0,waiterLevel=S.employees?.waiter?.level||0;if(!cookLevel&&!waiterLevel)return;const cycles=Math.floor(elapsed/30),earnings=cycles*(35+cookLevel*12+waiterLevel*15);if(earnings>0){S.cash+=earnings;S.lastSeen=now;setTimeout(()=>toast("🌙 Mientras estabas fuera +$"+earnings),700);save()}}
 window.addEventListener("pagehide",()=>{S.lastSeen=Date.now();save()});
 document.addEventListener("pointerdown",()=>WC.beep(420,.025),{once:true});
-setTimeout(showTutorial,500);
+setInterval(save,5000);\napplyOfflineProgress();\nsetTimeout(showTutorial,500);
 
 addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 if(!S.orders.length){addOrder();setTimeout(addOrder,2500);setTimeout(addOrder,5000)}else{S.selectedOrder=S.orders.some(o=>o.id===S.selectedOrder)?S.selectedOrder:S.orders[0].id;renderOrders();syncCustomers()}update();requestAnimationFrame(loop);
